@@ -49,6 +49,7 @@ module alu (
                           (opcode == 4'b1111) ? ($signed(A) >>> B[5:0]) : 0; // SRA
 
     // Final ALU MUX
-    assign result = (opcode == 4'b1101 || opcode == 4'b1110 || opcode == 4'b1111) ? shift_result : slice_result;
+    assign result = (opcode == 4'b1101 || opcode == 4'b1110 || opcode == 4'b1111) ? shift_result :           // Shift output
+                    (opcode == 4'b1011 || opcode == 4'b1100) ? ({63'b0, slice_result[63]}) : slice_result;    // SLT(SLTU) output or usual output
     
 endmodule

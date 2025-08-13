@@ -20,8 +20,8 @@ module alu_tb;
                  opcode, A, B, result);
         //A = 64'h0000_0000_0000_00FF;
         //B = 64'h0000_0000_0000_000F;
-        A = 64'h7FFF_FFFF_FFFF_FFFF;
-        B = 64'h0000_0000_0000_0020;
+        A = 64'h7FFF_FFFF_FFFF_FFFF; //h7FFF_FFFF_FFFF_FFFF
+        B = 64'h0000_0000_0000_0020; //h0000_0000_0000_0020
         // ADD (0000)
         opcode = 4'b0000; #10;
 
