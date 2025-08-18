@@ -18,13 +18,16 @@ module regfile (
         for (i = 0; i < 32; i = i + 1) regs[i] = 0;
     end
 
+    task dump_regs;
+        integer i;
+        for (i = 0; i < 32; i = i + 1) begin
+            $display("x%d = %d", i, regs[i]);
+        end
+    endtask
+
     // Reading
-    assign rd1 = (ra1 == 0) ? 0 :               // the 0 register is always 0
-                 (we && (wa == ra1)) ? wd :     // read-after-write condition
-                 regs[ra1];                     // usual read output
-    assign rd2 = (ra2 == 0) ? 0 :
-                 (we & (wa == ra2)) ? wd :
-                 regs[ra2];
+    assign rd1 = (ra1 == 0) ? 0 : regs[ra1];                     
+    assign rd2 = (ra2 == 0) ? 0 : regs[ra2];
 
     // Writing
     always @(posedge clk) begin

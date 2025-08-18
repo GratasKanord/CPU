@@ -8,6 +8,7 @@ module decoder (
     output reg [4:0] rd,     // destination register (address)
     output reg we,           // write enable signal
     output [63:0] alu_B,
+    output reg is_JALR,
     output reg [63:0] imm,
     output reg branch_taken,
     output [63:0] branch_target
@@ -16,11 +17,12 @@ module decoder (
     reg [2:0] func3;
     reg [6:0] func7;
     reg alu_B_src;
-    reg is_JALR = 0;
+
+    assign branch_target = (is_JALR) ? ((rd1 + imm) & ~1) : pc_addr + imm;
 
     assign alu_B = (alu_B_src) ? imm : rd2;
 
-    assign branch_target = (is_JALR) ? ((rd1 + imm) & ~1) : pc_addr + imm;
+    
 
     always @(*) begin
         func3 = 0;
@@ -167,6 +169,7 @@ module decoder (
     //ALU opcode for I-type load, S-type, U-type and J-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b0000011 ||
+            instr[6:0] == 7'b0110111 ||
             instr[6:0] == 7'b0100011 ||
             instr[6:0] == 7'b1100111 ||
             instr[6:0] == 7'b0010111 ||
