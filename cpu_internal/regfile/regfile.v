@@ -1,5 +1,6 @@
 module regfile (
     input clk,
+    input rst,
     input we,
     input [63:0] wd,
     input [4:0] wa,
@@ -30,9 +31,12 @@ module regfile (
     assign rd2 = (ra2 == 0) ? 0 : regs[ra2];
 
     // Writing
-    always @(posedge clk) begin
-        if(we && (wa != 0)) 
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            for (i = 0; i < 32; i = i + 1) regs[i] <= 64'b0;
+        end else if (we && (wa != 0)) begin
             regs[wa] <= wd;
+        end
     end
     
 endmodule

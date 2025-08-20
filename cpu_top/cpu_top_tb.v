@@ -27,9 +27,13 @@ module cpu_top_tb;
 
   // stop after some time
   initial begin
-    #500;  // run 500ns then stop
+    #5000;  // run 500ns then stop
     
+    $display("\nREGS");
     uut.u_regfile.dump_regs();
+
+    $display("\nMEM");
+    uut.u_dmem.dump_mem();
 
     $finish;
   end

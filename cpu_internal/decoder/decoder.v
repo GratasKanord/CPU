@@ -6,9 +6,12 @@ module decoder (
     output reg [4:0] rs1,    // 1st register's address
     output reg [4:0] rs2,    // 2nd register's address
     output reg [4:0] rd,     // destination register (address)
-    output reg we,           // write enable signal
+    output reg we_regs,      // write enable signal for registers
+    output reg we_mem,       // write enable signal for memory
+    output reg [7:0] be,     // byte enable signal for store/load instructions
     output [63:0] alu_B,
     output reg is_JALR,
+    output reg is_LOAD,
     output reg [63:0] imm,
     output reg branch_taken,
     output [63:0] branch_target
@@ -31,10 +34,12 @@ module decoder (
         rs2 = 0;
         rd= 0;
         imm = 0;
-        we = 0;
+        we_regs = 0;
+        we_mem = 0;
         alu_B_src = 0;
         branch_taken = 0;
         is_JALR = 0;
+        is_LOAD = 0;
         
         //Decoding instruction & exctracting it's parts
         case (instr[6:0])               
@@ -44,7 +49,7 @@ module decoder (
                 rs1 = instr[19:15];
                 rs2 = instr[24:20];
                 rd = instr[11:7];
-                we = 1;
+                we_regs = 1;
             end
             7'b0010011 : begin          //I-type immediate
                 func3 = instr[14:12];
@@ -52,7 +57,7 @@ module decoder (
                 rs1 = instr[19:15];
                 rd = instr[11:7];
                 imm = {{52{instr[31]}}, instr[31:20]};
-                we = 1;
+                we_regs = 1;
                 alu_B_src = 1;
             end
             7'b0000011 : begin          //I-type load
@@ -60,16 +65,17 @@ module decoder (
                 rs1 = instr[19:15];
                 rd = instr[11:7];
                 imm = {{52{instr[31]}}, instr[31:20]};
-                we = 1;
+                we_regs = 1;
+                we_mem = 0;
                 alu_B_src = 1;
-
+                is_LOAD = 1;
             end
             7'b1100111 : begin          //I-type jump
                 func3 = instr[14:12];
                 rs1 = instr[19:15];
                 rd = instr[11:7];
                 imm = {{52{instr[31]}}, instr[31:20]};
-                we = 1;
+                we_regs = 1;
                 alu_B_src = 1;
                 branch_taken = 1;
                 is_JALR = 1;
@@ -79,7 +85,8 @@ module decoder (
                 rs1 = instr[19:15];
                 rs2 = instr[24:20];
                 imm = {{52{instr[31]}}, instr[31:25], instr[11:7]};
-                we = 0;
+                we_regs = 0;
+                we_mem = 1;
                 alu_B_src = 1;
             end
             7'b1100011 : begin          //B-type
@@ -87,25 +94,25 @@ module decoder (
                 rs1 = instr[19:15];
                 rs2 = instr[24:20];
                 imm = {{51{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};  
-                we = 0; 
+                we_regs = 0; 
                 alu_B_src = 1;
             end
             7'b0110111 : begin          //U-type LUI
                 rd = instr[11:7];
                 imm = {{32{instr[31]}}, instr[31:12], 12'b0};    
-                we = 1;
+                we_regs = 1;
                 alu_B_src = 1;
             end
             7'b0010111 : begin          //U-type AUIPC
                 rd = instr[11:7];
                 imm = {{32{instr[31]}}, instr[31:12], 12'b0};
-                we = 1;
+                we_regs = 1;
                 alu_B_src = 1;
             end
             7'b1101111 : begin          //J-type JAL
                 rd = instr[11:7];
                 imm = {{43{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
-                we = 1; 
+                we_regs = 1; 
                 alu_B_src = 1;
                 branch_taken = 1;
             end
@@ -116,9 +123,11 @@ module decoder (
                 rs2 = 0;
                 rd= 0;
                 imm = 0;
-                we = 0;
+                we_regs = 0;
+                we_mem = 0;
                 alu_B_src = 0;
                 is_JALR = 0;
+                is_LOAD = 0;
             end
         endcase
     end
@@ -166,11 +175,9 @@ module decoder (
         end
     end
 
-    //ALU opcode for I-type load, S-type, U-type and J-type instructions
+    //ALU opcode for I-type jump, U-type and J-type instructions
     always @(*) begin
-        if (instr[6:0] == 7'b0000011 ||
-            instr[6:0] == 7'b0110111 ||
-            instr[6:0] == 7'b0100011 ||
+        if (instr[6:0] == 7'b0110111 ||
             instr[6:0] == 7'b1100111 ||
             instr[6:0] == 7'b0010111 ||
             instr[6:0] == 7'b1101111) begin
@@ -190,6 +197,24 @@ module decoder (
                 3'b111: branch_taken = (rd1 >= rd2); // BGEU
                 default: branch_taken = 0;
             endcase
+        end
+    end
+
+    //ALU opcode for I-type load and S-type
+    always @(*) begin
+        be = 8'b0000_0000;  // default: no bytes enabled
+        if (instr[6:0] == 7'b0100011) begin
+            alu_op = 4'b0000;
+            case (func3)
+                3'b000: be = 8'b0000_0001; // SB
+                3'b001: be = 8'b0000_0011; // SH
+                3'b010: be = 8'b0000_1111; // SW
+                3'b011: be = 8'b1111_1111; // SD
+                default: be = 8'b0000_0000;
+            endcase
+        end else if (instr[6:0] == 7'b0000011) begin
+            alu_op = 4'b0000;
+            be = 8'b0000_0000;
         end
     end
 endmodule

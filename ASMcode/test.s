@@ -60,7 +60,16 @@ branch_taken:
     jal x3, jump_label
     addi x31, x0, 999           # skipped
 jump_label:
-    addi x30, x0, 10           # jumped here
+    ADDI    x27, x0, 123      
+
+    SD      x27, 0(x1)        
+
+    LD      x28, 0(x1)        
+
+    # Additional test: write/load multiple registers
+    ADDI    x29, x0, 789
+    SD      x29, 32(x1)
+    LD      x30, 32(x1)
 
     nop
 
