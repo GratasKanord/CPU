@@ -1,29 +1,66 @@
     .section .text
     .globl _start
 _start:
-    # Test program for store/load
-    # x1 = base address for memory
-    # x2 = value to store
-    # x3 = value loaded from memory
 
-    LUI     x1, 0x0          # x1 = 0x0000_0000_0000_0000 base address
-    ADDI    x2, x0, 123      # x2 = 123, value to store
+    # -------------------------
+    # Test Machine CSRs (M-mode)
+    # -------------------------
 
-    # Store x2 into memory at address x1 + 0
-    SD      x2, 0(x1)        # memory[0] = x2
+    # Write to mstatus
+    li      x1, 0xABCD
+    csrrw   x2, mstatus, x1       
 
-    # Load back from memory into x3
-    LD      x3, 0(x1)        # x3 = memory[0]
+    # Read mstatus
+    csrr    x3, mstatus           
 
-    # Store another value to test
-    ADDI    x4, x0, 456      # x4 = 456
-    SD      x4, 8(x1)        # memory[8] = x4
+    # Set bits in mstatus (CSRRS)
+    li      x4, 0x000F
+    csrrs   x5, mstatus, x4       
+    csrr    x6, mstatus           
 
-    # Load it back
-    LD      x5, 8(x1)        # x5 = memory[8]
+    # Clear bits in mstatus (CSRRC)
+    li      x7, 0x000F
+    csrrc   x8, mstatus, x7       
+    csrr    x9, mstatus
 
-    # Additional test: write/load multiple registers
-    ADDI    x6, x0, 789
-    SD      x6, 16(x1)
-    LD      x7, 16(x1)
+    # Write immediate to mstatus (CSRRWI)
+    csrrwi  x10, mstatus, 0x1F   # max 31
+    csrr    x11, mstatus
+
+    # # ----------------------------
+    # # Test Supervisor CSRs (S-mode)
+    # # ----------------------------
+
+    # # Write to sstatus
+    li      x12, 0x1234
+    csrrw   x13, sstatus, x12     # x12 = old sstatus
+    csrr    x14, sstatus           # x13 = current sstatus
+
+    # # Set bits in sstatus
+    li      x15, 0x00F0
+    csrrs   x16, sstatus, x15     # x14 = old sstatus, sstatus |= 0x00F0
+    csrr    x17, sstatus
+
+    # Clear bits in sstatus
+    li      x18, 0x0F00
+    csrrc   x19, sstatus, x18     # x15 = old sstatus, sstatus &= ~0x0F00
+    csrr    x20, sstatus    
+    # Write immediate to sstatus
+    csrrwi  x21, sstatus, 0x0A    # x16 = old sstatus, sstatus = 0x0A
+    csrr    x22, sstatus    
+
+    # --------------------------------------
+    # Test User CSRs (U-mode)
+    # --------------------------------------
+
+    # Write to ustatus
+    li      x23, 0xDEAD
+    csrrw   x24, ustatus, x23     # x18 = old ustatus, ustatus = 0xDEAD
+    csrr    x25, ustatus          # x19 = current ustatus
+
+    # CSRRCI
+    csrrci  x26, mstatus, 0x01    # x26 = old mstatus, mstatus &= ~0x01
+    csrr    x27, mstatus          # x19 = current ustatus
+
     nop
+

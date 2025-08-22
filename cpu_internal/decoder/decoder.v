@@ -1,6 +1,7 @@
 module decoder (
     input [31:0] instr,
     input [63:0] rd1, rd2,   // registers' values
+    input [63:0] csr_rdata,
     input [63:0] pc_addr,
     output reg [3:0] alu_op,
     output reg [4:0] rs1,    // 1st register's address
@@ -12,10 +13,14 @@ module decoder (
     output [63:0] alu_B,
     output reg is_JALR,
     output reg is_LOAD,
+    output reg is_CSR,
     output reg [63:0] imm,
     output reg branch_taken,
-    output [63:0] branch_target
-
+    output [63:0] branch_target,
+    output reg [11:0] csr_addr,
+    output reg csr_we,
+    output reg [63:0] csr_wdata
+    
 );
     reg [2:0] func3;
     reg [6:0] func7;
@@ -24,8 +29,6 @@ module decoder (
     assign branch_target = (is_JALR) ? ((rd1 + imm) & ~1) : pc_addr + imm;
 
     assign alu_B = (alu_B_src) ? imm : rd2;
-
-    
 
     always @(*) begin
         func3 = 0;
@@ -40,6 +43,8 @@ module decoder (
         branch_taken = 0;
         is_JALR = 0;
         is_LOAD = 0;
+        is_CSR = 0;
+        csr_we = 0;
         
         //Decoding instruction & exctracting it's parts
         case (instr[6:0])               
@@ -116,6 +121,16 @@ module decoder (
                 alu_B_src = 1;
                 branch_taken = 1;
             end
+            7'b1110011 : begin          // System/SCR
+                csr_addr = instr[31:20];
+                rd       = instr[11:7];
+                rs1      = instr[19:15];
+                func3    = instr[14:12];
+                imm = {59'b0, instr[19:15]}; // for immediate versions (zimm)
+                is_CSR   = 1;
+                we_mem = 0;
+                we_regs = (rd != 0);
+            end
             default: begin
                 func3 = 0;
                 func7 = 0;
@@ -128,6 +143,8 @@ module decoder (
                 alu_B_src = 0;
                 is_JALR = 0;
                 is_LOAD = 0;
+                is_CSR = 0;
+                csr_we = 0;
             end
         endcase
     end
@@ -185,7 +202,7 @@ module decoder (
         end
     end
 
-    //ALU opcode for B-type instructions
+    //Decoding B-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b1100011) begin
             case (func3)
@@ -200,7 +217,7 @@ module decoder (
         end
     end
 
-    //ALU opcode for I-type load and S-type
+    //Decoding I-type load and S-type
     always @(*) begin
         be = 8'b0000_0000;  // default: no bytes enabled
         if (instr[6:0] == 7'b0100011) begin
@@ -217,4 +234,45 @@ module decoder (
             be = 8'b0000_0000;
         end
     end
+
+    // Decoding CSR instruction
+    always @(*) begin
+        csr_we    = 0;
+        csr_wdata = 64'b0;
+
+        if (instr[6:0] == 7'b1110011) begin  
+            case (func3)
+                3'b001: begin  // CSRRW
+                    csr_we    = 1;
+                    csr_wdata = rd1;            // write full value
+                end
+                3'b010: begin  // CSRRS
+                    csr_we    = (rs1 != 0);
+                    csr_wdata = csr_rdata | rd1; // OR old value with rd1
+                end
+                3'b011: begin  // CSRRC
+                    csr_we    = (rs1 != 0);
+                    csr_wdata = csr_rdata & ~rd1; // AND NOT old value with rd1
+                end
+                3'b101: begin  // CSRRWI
+                    csr_we    = 1;
+                    csr_wdata = imm;             // zimm
+                end
+                3'b110: begin  // CSRRSI
+                    csr_we    = (rs1 != 0);
+                    csr_wdata = csr_rdata | imm; // OR old value with zimm
+                end
+                3'b111: begin  // CSRRCI
+                    csr_we    = (rs1 != 0);
+                    csr_wdata = csr_rdata & ~imm; // AND NOT old value with zimm
+                end
+                default: begin
+                    csr_we    = 0;
+                    csr_wdata = 64'b0;
+                end
+            endcase
+        end
+    end
+
+
 endmodule

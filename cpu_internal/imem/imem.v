@@ -11,7 +11,7 @@ module imem (
     // Hardcoded instructions
     integer i;
     initial begin
-        $readmemh("ASMcode/test.hex", mem);   
+        $readmemh("ASMcode/test1.hex", mem);   
     end
 
     always @(*) begin
