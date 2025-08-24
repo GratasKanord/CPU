@@ -1,49 +1,48 @@
-module alu_lsb (
-    input wire [3:0] opcode,
-    input wire A,
-    input wire B,
-    output reg result,
-    output cout
-);
-    // Internal signals
-    wire B_inverted;
-    wire cin;
-    wire sum;
-    wire and_out, or_out, nor_out, xor_out, xnor_out, nand_out, pass_a, pass_b, zero_out;
+module alu_lsb (input wire [3:0] alu_op,
+                input wire input_alu_A,
+                input wire input_alu_B,
+                output reg alu_result,
+                output alu_cout);
+// Internal signals
+wire B_inverted;
+wire cin;
+wire sum;
+wire and_out, or_out, nor_out, xor_out, xnor_out, nand_out, pass_a, pass_b, zero_out;
 
-    // Invert B and set cin for SUB operation
-    assign B_inverted = (opcode == 4'b0001 || opcode == 4'b1011 || opcode == 4'b1100) ? ~B : B;
-    assign cin = (opcode == 4'b0001 || opcode == 4'b1011 || opcode == 4'b1100) ? 1 : 0;
+// Invert input_alu_B and set cin for SUB operation
+assign B_inverted = (alu_op == 4'b0001 || alu_op == 4'b1011 || alu_op == 4'b1100) ? ~input_alu_B : input_alu_B;
+assign cin        = (alu_op == 4'b0001 || alu_op == 4'b1011 || alu_op == 4'b1100) ? 1 : 0;
 
-    // Full adder logic for sum and carry out
-    assign sum = (A ^ B_inverted) ^ cin;
-    assign cout = (A & B_inverted) | (cin & (A ^ B_inverted));
+// Full adder logic for sum and carry out
+assign sum      = (input_alu_A ^ B_inverted) ^ cin;
+assign alu_cout = (input_alu_A & B_inverted) | (cin & (input_alu_A ^ B_inverted));
 
-    assign and_out = A & B;
-    assign or_out = A | B;
-    assign nor_out = ~(A | B);
-    assign xor_out = A ^ B;
-    assign xnor_out = ~(A ^ B);
-    assign nand_out = ~(A & B);
-    assign pass_a = A;
-    assign pass_b = B;
-    assign zero_out = 0;
+// Other alu computations
+assign and_out  = input_alu_A & input_alu_B;
+assign or_out   = input_alu_A | input_alu_B;
+assign nor_out  = ~(input_alu_A | input_alu_B);
+assign xor_out  = input_alu_A ^ input_alu_B;
+assign xnor_out = ~(input_alu_A ^ input_alu_B);
+assign nand_out = ~(input_alu_A & input_alu_B);
+assign pass_a   = input_alu_A;
+assign pass_b   = input_alu_B;
+assign zero_out = 0;
 
-    // Output selection based on opcode
-    always @(*) begin
-        case (opcode)
-            4'b0000 : result = sum;
-            4'b0001 : result = sum;
-            4'b0010 : result = and_out;
-            4'b0011 : result = or_out;
-            4'b0100 : result = nor_out;
-            4'b0101 : result = xor_out;
-            4'b0110 : result = xnor_out;
-            4'b0111 : result = nand_out;
-            4'b1000 : result = pass_a;
-            4'b1001 : result = pass_b;
-            4'b1010 : result = zero_out;
-            default: result = zero_out;
-        endcase
-    end
+// Output selection based on alu_op
+always @(*) begin
+    case (alu_op)
+        4'b0000 : alu_result = sum;
+        4'b0001 : alu_result = sum;
+        4'b0010 : alu_result = and_out;
+        4'b0011 : alu_result = or_out;
+        4'b0100 : alu_result = nor_out;
+        4'b0101 : alu_result = xor_out;
+        4'b0110 : alu_result = xnor_out;
+        4'b0111 : alu_result = nand_out;
+        4'b1000 : alu_result = pass_a;
+        4'b1001 : alu_result = pass_b;
+        4'b1010 : alu_result = zero_out;
+        default: alu_result  = zero_out;
+    endcase
+end
 endmodule

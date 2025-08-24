@@ -1,156 +1,154 @@
-module decoder (
-    input [31:0] instr,
-    input [63:0] rd1, rd2,   // registers' values
-    input [63:0] csr_rdata,
-    input [63:0] pc_addr,
-    output reg [3:0] alu_op,
-    output reg [4:0] rs1,    // 1st register's address
-    output reg [4:0] rs2,    // 2nd register's address
-    output reg [4:0] rd,     // destination register (address)
-    output reg we_regs,      // write enable signal for registers
-    output reg we_mem,       // write enable signal for memory
-    output reg [7:0] be,     // byte enable signal for store/load instructions
-    output [63:0] alu_B,
-    output reg is_JALR,
-    output reg is_LOAD,
-    output reg is_CSR,
-    output reg [63:0] imm,
-    output reg branch_taken,
-    output [63:0] branch_target,
-    output reg [11:0] csr_addr,
-    output reg csr_we,
-    output reg [63:0] csr_wdata
-    
-);
+module decoder (input [31:0] instr,
+                input [63:0] regs_data1,
+                regs_data2,                     // registers' values
+                input [63:0] csr_data,
+                input [63:0] pc_addr,
+                output reg [3:0] alu_op,
+                output reg [4:0] r_regs_addr1,  // 1st register's address
+                output reg [4:0] r_regs_addr2,  // 2nd register's address
+                output reg [4:0] w_regs_addr,   // destination register (address)
+                output reg we_regs,             // write enable signal for registers
+                output reg we_dmem,             // write enable signal for memory
+                output reg [7:0] dmem_word_sel, // byte enable signal for store/load instructions
+                output [63:0] input_alu_B,
+                output reg is_JALR,
+                output reg is_LOAD,
+                output reg is_CSR,
+                output reg [63:0] imm,
+                output reg pc_branch_taken,
+                output [63:0] pc_branch_target,
+                output reg [11:0] r_csr_addr,
+                output reg we_csr,
+                output reg [63:0] w_csr_data);
     reg [2:0] func3;
     reg [6:0] func7;
     reg alu_B_src;
-
-    assign branch_target = (is_JALR) ? ((rd1 + imm) & ~1) : pc_addr + imm;
-
-    assign alu_B = (alu_B_src) ? imm : rd2;
-
+    
+    assign pc_branch_target = (is_JALR) ? ((regs_data1 + imm) & ~1) : pc_addr + imm;
+    
+    assign input_alu_B = (alu_B_src) ? imm : regs_data2;
+    
     always @(*) begin
-        func3 = 0;
-        func7 = 0;
-        rs1 = 0;
-        rs2 = 0;
-        rd= 0;
-        imm = 0;
-        we_regs = 0;
-        we_mem = 0;
-        alu_B_src = 0;
-        branch_taken = 0;
-        is_JALR = 0;
-        is_LOAD = 0;
-        is_CSR = 0;
-        csr_we = 0;
+        func3           = 0;
+        func7           = 0;
+        r_regs_addr1    = 0;
+        r_regs_addr2    = 0;
+        w_regs_addr     = 0;
+        imm             = 0;
+        we_regs         = 0;
+        we_dmem         = 0;
+        alu_B_src       = 0;
+        pc_branch_taken = 0;
+        is_JALR         = 0;
+        is_LOAD         = 0;
+        is_CSR          = 0;
+        we_csr          = 0;
         
         //Decoding instruction & exctracting it's parts
-        case (instr[6:0])               
+        case (instr[6:0])
             7'b0110011 : begin          //R-type
-                func3 = instr[14:12];
-                func7 = instr[31:25];
-                rs1 = instr[19:15];
-                rs2 = instr[24:20];
-                rd = instr[11:7];
-                we_regs = 1;
+                func3        = instr[14:12];
+                func7        = instr[31:25];
+                r_regs_addr1 = instr[19:15];
+                r_regs_addr2 = instr[24:20];
+                w_regs_addr  = instr[11:7];
+                we_regs      = 1;
             end
             7'b0010011 : begin          //I-type immediate
-                func3 = instr[14:12];
-                func7 = instr[31:25];
-                rs1 = instr[19:15];
-                rd = instr[11:7];
-                imm = {{52{instr[31]}}, instr[31:20]};
-                we_regs = 1;
-                alu_B_src = 1;
+                func3        = instr[14:12];
+                func7        = instr[31:25];
+                r_regs_addr1 = instr[19:15];
+                w_regs_addr  = instr[11:7];
+                imm          = {{52{instr[31]}}, instr[31:20]};
+                we_regs      = 1;
+                alu_B_src    = 1;
             end
             7'b0000011 : begin          //I-type load
-                func3 = instr[14:12];
-                rs1 = instr[19:15];
-                rd = instr[11:7];
-                imm = {{52{instr[31]}}, instr[31:20]};
-                we_regs = 1;
-                we_mem = 0;
-                alu_B_src = 1;
-                is_LOAD = 1;
+                func3        = instr[14:12];
+                r_regs_addr1 = instr[19:15];
+                w_regs_addr  = instr[11:7];
+                imm          = {{52{instr[31]}}, instr[31:20]};
+                we_regs      = 1;
+                we_dmem      = 0;
+                alu_B_src    = 1;
+                is_LOAD      = 1;
             end
             7'b1100111 : begin          //I-type jump
-                func3 = instr[14:12];
-                rs1 = instr[19:15];
-                rd = instr[11:7];
-                imm = {{52{instr[31]}}, instr[31:20]};
-                we_regs = 1;
-                alu_B_src = 1;
-                branch_taken = 1;
-                is_JALR = 1;
+                func3           = instr[14:12];
+                r_regs_addr1    = instr[19:15];
+                w_regs_addr     = instr[11:7];
+                imm             = {{52{instr[31]}}, instr[31:20]};
+                we_regs         = 1;
+                alu_B_src       = 1;
+                pc_branch_taken = 1;
+                is_JALR         = 1;
             end
             7'b0100011 : begin          //S-type store
-                func3 = instr[14:12];
-                rs1 = instr[19:15];
-                rs2 = instr[24:20];
-                imm = {{52{instr[31]}}, instr[31:25], instr[11:7]};
-                we_regs = 0;
-                we_mem = 1;
-                alu_B_src = 1;
+                func3        = instr[14:12];
+                r_regs_addr1 = instr[19:15];
+                r_regs_addr2 = instr[24:20];
+                imm          = {{52{instr[31]}}, instr[31:25], instr[11:7]};
+                we_regs      = 0;
+                we_dmem      = 1;
+                alu_B_src    = 1;
             end
             7'b1100011 : begin          //B-type
-                func3 = instr[14:12];
-                rs1 = instr[19:15];
-                rs2 = instr[24:20];
-                imm = {{51{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};  
-                we_regs = 0; 
-                alu_B_src = 1;
+                func3        = instr[14:12];
+                r_regs_addr1 = instr[19:15];
+                r_regs_addr2 = instr[24:20];
+                imm          = {{51{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
+                we_regs      = 0;
+                alu_B_src    = 1;
             end
             7'b0110111 : begin          //U-type LUI
-                rd = instr[11:7];
-                imm = {{32{instr[31]}}, instr[31:12], 12'b0};    
-                we_regs = 1;
-                alu_B_src = 1;
+                w_regs_addr = instr[11:7];
+                imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
+                we_regs     = 1;
+                alu_B_src   = 1;
             end
             7'b0010111 : begin          //U-type AUIPC
-                rd = instr[11:7];
-                imm = {{32{instr[31]}}, instr[31:12], 12'b0};
-                we_regs = 1;
-                alu_B_src = 1;
+                w_regs_addr = instr[11:7];
+                imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
+                we_regs     = 1;
+                alu_B_src   = 1;
             end
             7'b1101111 : begin          //J-type JAL
-                rd = instr[11:7];
-                imm = {{43{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
-                we_regs = 1; 
-                alu_B_src = 1;
-                branch_taken = 1;
+                w_regs_addr     = instr[11:7];
+                imm             = {{43{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
+                we_regs         = 1;
+                alu_B_src       = 1;
+                pc_branch_taken = 1;
             end
             7'b1110011 : begin          // System/SCR
-                csr_addr = instr[31:20];
-                rd       = instr[11:7];
-                rs1      = instr[19:15];
-                func3    = instr[14:12];
-                imm = {59'b0, instr[19:15]}; // for immediate versions (zimm)
-                is_CSR   = 1;
-                we_mem = 0;
-                we_regs = (rd != 0);
+                r_csr_addr   = instr[31:20];
+                w_regs_addr  = instr[11:7];
+                r_regs_addr1 = instr[19:15];
+                func3        = instr[14:12];
+                imm          = {59'b0, instr[19:15]}; // for immediate versions (zimm)
+                is_CSR       = 1;
+                we_dmem      = 0;
+                we_regs      = (w_regs_addr != 0);
             end
             default: begin
-                func3 = 0;
-                func7 = 0;
-                rs1 = 0;
-                rs2 = 0;
-                rd= 0;
-                imm = 0;
-                we_regs = 0;
-                we_mem = 0;
-                alu_B_src = 0;
-                is_JALR = 0;
-                is_LOAD = 0;
-                is_CSR = 0;
-                csr_we = 0;
+                func3        = 0;
+                func7        = 0;
+                r_regs_addr1 = 0;
+                r_regs_addr2 = 0;
+                w_regs_addr  = 0;
+                imm          = 0;
+                we_regs      = 0;
+                we_dmem      = 0;
+                alu_B_src    = 0;
+                is_JALR      = 0;
+                is_LOAD      = 0;
+                is_CSR       = 0;
+                we_csr       = 0;
             end
         endcase
     end
-
+    
     // Decoding ALU opcode for R-type instructions
-    always @(*) begin    
+    always @(*) begin
         if (instr[6:0] == 7'b0110011) begin
             case ({func7, func3})
                 10'b0000000000: alu_op = 4'b0000; // ADD
@@ -163,11 +161,11 @@ module decoder (
                 10'b0100000101: alu_op = 4'b1111; // SRA
                 10'b0000000110: alu_op = 4'b0011; // OR
                 10'b0000000111: alu_op = 4'b0010; // AND
-                default: alu_op = 4'b1010;        // NOP
+                default: alu_op        = 4'b1010;        // NOP
             endcase
-        end                           
+        end
     end
-
+    
     // Decoding ALU opcode for I-type immediate instructions
     always @(*) begin
         if (instr[6:0] == 7'b0010011) begin
@@ -191,88 +189,86 @@ module decoder (
             endcase
         end
     end
-
+    
     //ALU opcode for I-type jump, U-type and J-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b0110111 ||
-            instr[6:0] == 7'b1100111 ||
-            instr[6:0] == 7'b0010111 ||
-            instr[6:0] == 7'b1101111) begin
-            alu_op = 4'b0000; //Add operation 
-        end
+        instr[6:0] == 7'b1100111 ||
+        instr[6:0] == 7'b0010111 ||
+        instr[6:0] == 7'b1101111) begin
+        alu_op = 4'b0000; //Add operation
     end
-
+    end
+    
     //Decoding B-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b1100011) begin
             case (func3)
-                3'b000: branch_taken = (rd1 == rd2); // BEQ
-                3'b001: branch_taken = (rd1 != rd2); // BNE
-                3'b100: branch_taken = ($signed(rd1) < $signed(rd2)); // BLT
-                3'b101: branch_taken = ($signed(rd1) >= $signed(rd2)); // BGE
-                3'b110: branch_taken = (rd1 < rd2); // BLTU
-                3'b111: branch_taken = (rd1 >= rd2); // BGEU
-                default: branch_taken = 0;
+                3'b000: pc_branch_taken  = (regs_data1 == regs_data2); // BEQ
+                3'b001: pc_branch_taken  = (regs_data1 != regs_data2); // BNE
+                3'b100: pc_branch_taken  = ($signed(regs_data1) < $signed(regs_data2)); // BLT
+                3'b101: pc_branch_taken  = ($signed(regs_data1) >= $signed(regs_data2)); // BGE
+                3'b110: pc_branch_taken  = (regs_data1 < regs_data2); // BLTU
+                3'b111: pc_branch_taken  = (regs_data1 >= regs_data2); // BGEU
+                default: pc_branch_taken = 0;
             endcase
         end
     end
-
+    
     //Decoding I-type load and S-type
     always @(*) begin
-        be = 8'b0000_0000;  // default: no bytes enabled
+        dmem_word_sel = 8'b0000_0000;  // default: no bytes enabled
         if (instr[6:0] == 7'b0100011) begin
             alu_op = 4'b0000;
             case (func3)
-                3'b000: be = 8'b0000_0001; // SB
-                3'b001: be = 8'b0000_0011; // SH
-                3'b010: be = 8'b0000_1111; // SW
-                3'b011: be = 8'b1111_1111; // SD
-                default: be = 8'b0000_0000;
+                3'b000: dmem_word_sel  = 8'b0000_0001; // SB
+                3'b001: dmem_word_sel  = 8'b0000_0011; // SH
+                3'b010: dmem_word_sel  = 8'b0000_1111; // SW
+                3'b011: dmem_word_sel  = 8'b1111_1111; // SD
+                default: dmem_word_sel = 8'b0000_0000;
             endcase
-        end else if (instr[6:0] == 7'b0000011) begin
-            alu_op = 4'b0000;
-            be = 8'b0000_0000;
+            end else if (instr[6:0] == 7'b0000011) begin
+            alu_op        = 4'b0000;
+            dmem_word_sel = 8'b0000_0000;
         end
     end
-
+    
     // Decoding CSR instruction
     always @(*) begin
-        csr_we    = 0;
-        csr_wdata = 64'b0;
-
-        if (instr[6:0] == 7'b1110011) begin  
+        we_csr     = 0;
+        w_csr_data = 64'b0;
+        
+        if (instr[6:0] == 7'b1110011) begin
             case (func3)
                 3'b001: begin  // CSRRW
-                    csr_we    = 1;
-                    csr_wdata = rd1;            // write full value
+                    we_csr     = 1;
+                    w_csr_data = regs_data1;            // write full value
                 end
                 3'b010: begin  // CSRRS
-                    csr_we    = (rs1 != 0);
-                    csr_wdata = csr_rdata | rd1; // OR old value with rd1
+                    we_csr     = (r_regs_addr1 != 0);
+                    w_csr_data = csr_data | regs_data1; // OR old value with regs_data1
                 end
                 3'b011: begin  // CSRRC
-                    csr_we    = (rs1 != 0);
-                    csr_wdata = csr_rdata & ~rd1; // AND NOT old value with rd1
+                    we_csr     = (r_regs_addr1 != 0);
+                    w_csr_data = csr_data & ~regs_data1; // AND NOT old value with regs_data1
                 end
                 3'b101: begin  // CSRRWI
-                    csr_we    = 1;
-                    csr_wdata = imm;             // zimm
+                    we_csr     = 1;
+                    w_csr_data = imm;             // zimm
                 end
                 3'b110: begin  // CSRRSI
-                    csr_we    = (rs1 != 0);
-                    csr_wdata = csr_rdata | imm; // OR old value with zimm
+                    we_csr     = (r_regs_addr1 != 0);
+                    w_csr_data = csr_data | imm; // OR old value with zimm
                 end
                 3'b111: begin  // CSRRCI
-                    csr_we    = (rs1 != 0);
-                    csr_wdata = csr_rdata & ~imm; // AND NOT old value with zimm
+                    we_csr     = (r_regs_addr1 != 0);
+                    w_csr_data = csr_data & ~imm; // AND NOT old value with zimm
                 end
                 default: begin
-                    csr_we    = 0;
-                    csr_wdata = 64'b0;
+                    we_csr     = 0;
+                    w_csr_data = 64'b0;
                 end
             endcase
         end
-    end
-
-
+    end 
 endmodule

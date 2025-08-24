@@ -1,13 +1,10 @@
-module csr_user (
-    input  wire        clk,
-    input  wire        reset,
-    input  wire        csr_we,        // write enable from CPU
-    input  wire [11:0] csr_addr,      // 12-bit CSR address
-    input  wire [63:0] csr_wdata,     // data to write
-    input  wire [63:0] pc,            // current PC, for trap if needed
-    output reg  [63:0] csr_rdata
-);
-
+module csr_user (input wire clk,
+                 input wire rst,
+                 input wire we_csr,            // write enable from CPU
+                 input wire [11:0] r_csr_addr, // 12-bit CSR address
+                 input wire [63:0] w_csr_data, // data to write
+                 output reg [63:0] csr_data);
+    
     // User CSRs
     reg [63:0] ustatus;
     reg [63:0] uie;
@@ -17,7 +14,7 @@ module csr_user (
     reg [63:0] ucause;
     reg [63:0] utval;
     reg [63:0] uip;
-
+    
     // CSR Addresses
     `define CSR_USTATUS   12'h000
     `define CSR_UIE       12'h004
@@ -27,25 +24,25 @@ module csr_user (
     `define CSR_UCAUSE    12'h042
     `define CSR_UTVAL     12'h043
     `define CSR_UIP       12'h044
-
+    
     // CSR Read
     always @(*) begin
-        case(csr_addr)
-            `CSR_USTATUS:   csr_rdata = ustatus;
-            `CSR_UIE:       csr_rdata = uie;
-            `CSR_UTVEC:     csr_rdata = utvec;
-            `CSR_USCRATCH:  csr_rdata = uscratch;
-            `CSR_UEPC:      csr_rdata = uepc;
-            `CSR_UCAUSE:    csr_rdata = ucause;
-            `CSR_UTVAL:     csr_rdata = utval;
-            `CSR_UIP:       csr_rdata = uip;
-            default:        csr_rdata = 64'b0;
+        case(r_csr_addr)
+            `CSR_USTATUS:   csr_data = ustatus;
+            `CSR_UIE:       csr_data = uie;
+            `CSR_UTVEC:     csr_data = utvec;
+            `CSR_USCRATCH:  csr_data = uscratch;
+            `CSR_UEPC:      csr_data = uepc;
+            `CSR_UCAUSE:    csr_data = ucause;
+            `CSR_UTVAL:     csr_data = utval;
+            `CSR_UIP:       csr_data = uip;
+            default:        csr_data = 64'b0;
         endcase
     end
-
+    
     // CSR Write
     always @(posedge clk) begin
-        if (reset) begin
+        if (rst) begin
             ustatus  <= 64'b0;
             uie      <= 64'b0;
             utvec    <= 64'b0;
@@ -54,18 +51,18 @@ module csr_user (
             ucause   <= 64'b0;
             utval    <= 64'b0;
             uip      <= 64'b0;
-        end else if (csr_we) begin
-            case(csr_addr)
-                `CSR_USTATUS:   ustatus  <= csr_wdata;
-                `CSR_UIE:       uie      <= csr_wdata;
-                `CSR_UTVEC:     utvec    <= csr_wdata;
-                `CSR_USCRATCH:  uscratch <= csr_wdata;
-                `CSR_UEPC:      uepc     <= csr_wdata;
-                `CSR_UCAUSE:    ucause   <= csr_wdata;
-                `CSR_UTVAL:     utval    <= csr_wdata;
-                `CSR_UIP:       uip      <= csr_wdata;
+            end else if (we_csr) begin
+            case(r_csr_addr)
+                `CSR_USTATUS:   ustatus  <= w_csr_data;
+                `CSR_UIE:       uie      <= w_csr_data;
+                `CSR_UTVEC:     utvec    <= w_csr_data;
+                `CSR_USCRATCH:  uscratch <= w_csr_data;
+                `CSR_UEPC:      uepc     <= w_csr_data;
+                `CSR_UCAUSE:    ucause   <= w_csr_data;
+                `CSR_UTVAL:     utval    <= w_csr_data;
+                `CSR_UIP:       uip      <= w_csr_data;
             endcase
         end
     end
-
+    
 endmodule
