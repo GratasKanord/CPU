@@ -3,6 +3,7 @@ module decoder (input [31:0] instr,
                 regs_data2,                     // registers' values
                 input [63:0] csr_data,
                 input [63:0] pc_addr,
+                input [1:0] priv_lvl,
                 output reg [3:0] alu_op,
                 output reg [4:0] r_regs_addr1,  // 1st register's address
                 output reg [4:0] r_regs_addr2,  // 2nd register's address
@@ -19,10 +20,15 @@ module decoder (input [31:0] instr,
                 output [63:0] pc_branch_target,
                 output reg [11:0] r_csr_addr,
                 output reg we_csr,
-                output reg [63:0] w_csr_data);
+                output reg [63:0] w_csr_data,
+                output reg exc_en,
+                output reg [3:0] exc_code,
+                output reg [63:0] exc_val,
+                output reg mret);
     reg [2:0] func3;
     reg [6:0] func7;
     reg alu_B_src;
+    reg [11:0] sys_instr;
     
     assign pc_branch_target = (is_JALR) ? ((regs_data1 + imm) & ~1) : pc_addr + imm;
     
@@ -43,6 +49,9 @@ module decoder (input [31:0] instr,
         is_LOAD         = 0;
         is_CSR          = 0;
         we_csr          = 0;
+        exc_en = 0;
+        exc_code = 0;
+        exc_val = 0;
         
         //Decoding instruction & exctracting it's parts
         case (instr[6:0])
@@ -120,7 +129,12 @@ module decoder (input [31:0] instr,
                 pc_branch_taken = 1;
             end
             7'b1110011 : begin          // System/SCR
-                r_csr_addr   = instr[31:20];
+                sys_instr = instr[31:20];
+                if (sys_instr != 12'b0 &&
+                    sys_instr != 12'b1 &&
+                    sys_instr != 12'b001100000010) begin
+                    r_csr_addr = instr[31:20];
+                end                 
                 w_regs_addr  = instr[11:7];
                 r_regs_addr1 = instr[19:15];
                 func3        = instr[14:12];
@@ -130,6 +144,9 @@ module decoder (input [31:0] instr,
                 we_regs      = (w_regs_addr != 0);
             end
             default: begin
+                exc_en   = 1'b1;
+                exc_code = 4'd2;       // Illegal instruction
+                exc_val  = instr;
                 func3        = 0;
                 func7        = 0;
                 r_regs_addr1 = 0;
@@ -233,13 +250,31 @@ module decoder (input [31:0] instr,
         end
     end
     
-    // Decoding CSR instruction
+    // Decoding System/CSR instruction
     always @(*) begin
         we_csr     = 0;
         w_csr_data = 64'b0;
-        
+        exc_en     = 0;
+        exc_code   = 0;  
+        exc_val    = 0;
+        mret = 0;
+
         if (instr[6:0] == 7'b1110011) begin
             case (func3)
+                3'b0: begin  // Exceptions and system instructions
+                    if (sys_instr == 12'b0) begin // ECALL
+                        exc_en   = 1'b1;
+                        exc_code = (priv_lvl == 2'b11) ? 4'd11 : 
+                                   (priv_lvl == 2'b01) ? 4'd9  : 4'd8; 
+                        exc_val  = 64'b0;
+                    end else if (sys_instr == 12'b1) begin // EBREAK
+                        exc_en   = 1'b1;
+                        exc_code = 4'd3;
+                        exc_val  = 64'b0;
+                    end else if (sys_instr == 12'b001100000010) begin // MRET
+                        mret = 1'b1;
+                    end
+                end
                 3'b001: begin  // CSRRW
                     we_csr     = 1;
                     w_csr_data = regs_data1;            // write full value
@@ -267,6 +302,10 @@ module decoder (input [31:0] instr,
                 default: begin
                     we_csr     = 0;
                     w_csr_data = 64'b0;
+                    exc_en     = 0;
+                    exc_code   = 0;  
+                    exc_val    = 0;
+                    mret = 0;
                 end
             endcase
         end

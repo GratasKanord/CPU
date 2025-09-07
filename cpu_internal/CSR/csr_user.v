@@ -3,7 +3,10 @@ module csr_user (input wire clk,
                  input wire we_csr,            // write enable from CPU
                  input wire [11:0] r_csr_addr, // 12-bit CSR address
                  input wire [63:0] w_csr_data, // data to write
-                 output reg [63:0] csr_data);
+                 output reg [63:0] csr_data,
+                 output reg exc_en,            // exceptions handling
+                 output reg [3:0] exc_code,
+                 output reg [63:0] exc_val);
     
     // User CSRs
     reg [63:0] ustatus;
@@ -27,6 +30,10 @@ module csr_user (input wire clk,
     
     // CSR Read
     always @(*) begin
+        csr_data     = 64'b0;
+        exc_en   = 1'b0;
+        exc_code = 4'd0;
+        exc_val  = 64'd0;
         case(r_csr_addr)
             `CSR_USTATUS:   csr_data = ustatus;
             `CSR_UIE:       csr_data = uie;
@@ -36,7 +43,11 @@ module csr_user (input wire clk,
             `CSR_UCAUSE:    csr_data = ucause;
             `CSR_UTVAL:     csr_data = utval;
             `CSR_UIP:       csr_data = uip;
-            default:        csr_data = 64'b0;
+            default: begin
+                exc_en       = 1;
+                exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
+                exc_code     = 4'd2;  // Illegal instruction cause
+            end
         endcase
     end
     
@@ -51,7 +62,13 @@ module csr_user (input wire clk,
             ucause   <= 64'b0;
             utval    <= 64'b0;
             uip      <= 64'b0;
-            end else if (we_csr) begin
+            exc_en   <= 1'b0;
+            exc_code <= 4'd0;
+            exc_val  <= 64'd0;
+        end else if (we_csr) begin
+            exc_en   <= 1'b0;
+            exc_code <= 4'd0;
+            exc_val  <= 64'd0;
             case(r_csr_addr)
                 `CSR_USTATUS:   ustatus  <= w_csr_data;
                 `CSR_UIE:       uie      <= w_csr_data;
@@ -61,6 +78,11 @@ module csr_user (input wire clk,
                 `CSR_UCAUSE:    ucause   <= w_csr_data;
                 `CSR_UTVAL:     utval    <= w_csr_data;
                 `CSR_UIP:       uip      <= w_csr_data;
+                default: begin
+                    exc_en       <= 1;
+                    exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
+                    exc_code     <= 4'd2;  // Illegal instruction cause
+                end
             endcase
         end
     end

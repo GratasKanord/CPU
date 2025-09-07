@@ -1,20 +1,8 @@
     .section .text
     .globl _start
 _start:
-    # ===============================
-    # RV64 CPU Test Program
-    # Tests R, I, Load, Jump, Branch, LUI, AUIPC
-    # ===============================
 
-    # -------------------------------
-    # LUI and AUIPC
-    # -------------------------------
-    lui x1, 0x12345          # x1 = 0x12345000
-    auipc x2, 0x10           # x2 = PC + 0x1000 (relative)
-    
-    # -------------------------------
     # R-type instructions
-    # -------------------------------
     li x3, 10                 # load immediate 10
     li x4, 20                 # load immediate 20
     
@@ -25,13 +13,12 @@ _start:
     xor x9, x3, x4            # x9 = x3 ^ x4 = 30
     slt x10, x3, x4           # x10 = (10 < 20)?1:0 = 1
     sltu x11, x4, x3          # x11 = (20 < 10)?1:0 = 0
-    sll x12, x3, x4           # x12 = x3 << (x4[5:0])
-    srl x13, x4, x3           # x13 = x4 >> x3
-    sra x14, x4, x3           # x14 = x4 >> x3 arithmetic
+    sll x12, x3, x4           # x12 = x3 << (x4[5:0]) = 10485760
+    srl x13, x4, x3           # x13 = x4 >> x3 = 0 
+    sra x14, x4, x3           # x14 = x4 >> x3 arithmetic = 0
     
-    # -------------------------------
-    # I-type immediate instructions
-    # -------------------------------
+
+    #I-type immediate instructions
     addi x15, x3, 5           # x15 = x3 + 5 = 15
     andi x16, x3, 7           # x16 = x3 & 7 = 2
     ori  x17, x3, 8           # x17 = x3 | 8 = 10
@@ -41,10 +28,8 @@ _start:
     slli x21, x3, 2           # x21 = x3 << 2 = 40
     srli x22, x4, 1           # x22 = x4 >> 1 = 10
     srai x23, x4, 1           # x23 = x4 >> 1 arithmetic = 10
-    
-    # -------------------------------
+
     # B-type branch instructions
-    # -------------------------------
     li x24, 5
     li x25, 5
     beq x24, x25, branch_taken   # should branch
@@ -54,22 +39,11 @@ branch_taken:
     addi x26, x0, 1             # mark branch taken
     nop
     
-    #-------------------------------
     #J-type jump instruction
-    #-------------------------------
-    jal x3, jump_label
+    jal x2, jump_label
     addi x31, x0, 999           # skipped
 jump_label:
-    ADDI    x27, x0, 123      
-
-    SD      x27, 0(x1)        
-
-    LD      x28, 0(x1)        
-
-    # Additional test: write/load multiple registers
-    ADDI    x29, x0, 789
-    SD      x29, 32(x1)
-    LD      x30, 32(x1)
+    addi x27, x0, 123      
 
     nop
 

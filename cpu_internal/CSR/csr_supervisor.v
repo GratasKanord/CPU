@@ -6,8 +6,9 @@ module csr_supervisor (input wire clk,
                        input wire [63:0] pc_addr,    // current PC (for trap)
                        input wire [1:0] priv_lvl,    // current CPU privilege: 0 = U, 1 = S, 3 = M
                        output reg [63:0] csr_data,
-                       output reg illegal_trap,      // pulse for illegal CSR access
-                       output reg [63:0] trap_pc);   // PC saved for trap
+                       output reg exc_en,            // exceptions handling
+                       output reg [3:0] exc_code,
+                       output reg [63:0] exc_val);   // PC saved for trap
     
     // Supervisor CSRs
     reg [63:0] sstatus;
@@ -44,7 +45,10 @@ module csr_supervisor (input wire clk,
     
     // CSR Read with privilege check
     always @(*) begin
-        illegal_trap = 0;
+        exc_en       = 1'b0;
+        exc_val      = 64'b0;
+        exc_code     = 4'b0;
+        csr_data     = 64'b0;
         case(r_csr_addr)
             `CSR_SSTATUS:  csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? sstatus  : 64'b0;
             `CSR_SIE:      csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? sie      : 64'b0;
@@ -55,17 +59,21 @@ module csr_supervisor (input wire clk,
             `CSR_STVAL:    csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? stval    : 64'b0;
             `CSR_SIP:      csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? sip      : 64'b0;
             `CSR_SATP:     csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? satp     : 64'b0;
-            default:       begin
-                csr_data     = 64'b0;
-                illegal_trap = 1;
+            default: begin
+                exc_en       = 1;
+                exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
+                exc_code     = 4'd2;  // Illegal instruction cause
             end
         endcase
-        if (csr_data == 64'b0 && priv_lvl < csr_required_priv(r_csr_addr))
-            illegal_trap = 1;
+            if (priv_lvl < csr_required_priv(r_csr_addr)) begin
+                exc_en       = 1;
+                exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
+                exc_code     = 4'd2;  // Illegal instruction cause
             end
+    end
         
         // CSR Write with privilege check
-        always @(posedge clk) begin
+    always @(posedge clk) begin
             if (rst) begin
                 sstatus      <= 64'b0;
                 sie          <= 64'b0;
@@ -76,18 +84,19 @@ module csr_supervisor (input wire clk,
                 stval        <= 64'b0;
                 sip          <= 64'b0;
                 satp         <= 64'b0;
-                trap_pc      <= 64'b0;
-                illegal_trap <= 0;
-                end else begin
+                exc_en       <= 1'b0;
+                exc_val      <= 64'b0;
+                exc_code     <= 4'b0;
+            end else begin
+                exc_en       <= 1'b0;
+                exc_val      <= 64'b0;
+                exc_code     <= 4'b0;
                 if (we_csr) begin
                     if (priv_lvl < csr_required_priv(r_csr_addr)) begin
-                        // Illegal write trap
-                        illegal_trap <= 1;
-                        trap_pc      <= pc_addr;
-                        scause       <= 64'd2;              // Illegal instruction code (2)
-                        stval        <= {52'b0, r_csr_addr};   // offending CSR address
-                        end else begin
-                        illegal_trap <= 0;
+                        exc_en       <= 1;
+                        exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
+                        exc_code     <= 4'd2;     // Illegal Instruction code (2)
+                    end else begin
                         case(r_csr_addr)
                             `CSR_SSTATUS:  sstatus  <= w_csr_data;
                             `CSR_SIE:      sie      <= w_csr_data;
@@ -98,12 +107,14 @@ module csr_supervisor (input wire clk,
                             `CSR_STVAL:    stval    <= w_csr_data;
                             `CSR_SIP:      sip      <= w_csr_data;
                             `CSR_SATP:     satp     <= w_csr_data;
+                            default: begin
+                            exc_en   <= 1;
+                            exc_val  <= {52'b0, r_csr_addr};
+                            exc_code <= 4'd2;
+                        end   
                         endcase
                     end
-                    end else begin
-                    illegal_trap <= 0;
-                end
+                end 
             end
-        end
-        
-        endmodule
+        end   
+endmodule

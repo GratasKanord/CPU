@@ -6,9 +6,18 @@ module csr_machine (input wire clk,
                     input wire [63:0] pc_addr,    // current PC (for trap)
                     input wire instr_retired,     // instruction retired signal
                     input wire [1:0] priv_lvl,   // current CPU privilege: 0 = U, 1 = S, 3 = M
+                    input wire       trap_taken,
+                    input wire       trap_done,
+                    input  wire [63:0] mepc_next,
+                    input  wire [63:0] mcause_next,
+                    input  wire [63:0] mtval_next,
+                    input  wire [63:0] mstatus_next, 
                     output reg [63:0] csr_data,
-                    output reg illegal_trap,      // pulse for illegal CSR access
-                    output reg [63:0] trap_pc);   // PC saved for trap
+                    output reg exc_en,            // exceptions handling
+                    output reg [3:0] exc_code,
+                    output reg [63:0] exc_val,
+                    output reg [63:0] mstatus_current,
+                    output reg [63:0] mtvec_trap);  
     // Machine CSRs
     reg [63:0] mstatus;
     reg [63:0] misa;  // read-only
@@ -22,7 +31,6 @@ module csr_machine (input wire clk,
     reg [63:0] mcycle;
     reg [63:0] minstret;
     reg [63:0] time_reg;  // read-only
-    
     
     // CSR Addresses
     `define CSR_MSTATUS 12'h300
@@ -57,8 +65,11 @@ module csr_machine (input wire clk,
     
     // CSR Read logic with privilege check
     always @(*) begin
-        illegal_trap = 0;
-        case (r_csr_addr)
+        exc_en       = 1'b0;
+        exc_val      = 64'b0;
+        exc_code     = 4'b0;
+        csr_data     = 64'b0;
+            case (r_csr_addr)
             `CSR_MSTATUS:  csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mstatus : 64'b0;
             `CSR_MISA:     csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? misa : 64'b0;
             `CSR_MIE:      csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mie : 64'b0;
@@ -74,19 +85,26 @@ module csr_machine (input wire clk,
             `CSR_INSTRET:  csr_data = minstret;
             `CSR_TIME:     csr_data = time_reg;
             default: begin
-                csr_data     = 64'b0;
-                illegal_trap = 1;
+                exc_en       = 1;
+                exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
+                exc_code     = 4'd2;  // Illegal instruction cause
             end
-        endcase
-        if (csr_data == 64'b0 && priv_lvl < csr_required_priv(r_csr_addr)) illegal_trap = 1;
+            endcase
+            if (priv_lvl < csr_required_priv(r_csr_addr)) begin
+                exc_en       = 1;
+                exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
+                exc_code     = 4'd2;  // Illegal instruction cause
+            end
     end
     
-    // CSR Write logic with privilege check and trap
+    // CSR Write logic
     always @(posedge clk) begin
         if (rst) begin
             mstatus      <= 64'b0;
+            mstatus_current <= 64'b0;
             mie          <= 64'b0;
             mtvec        <= 64'b0;
+            mtvec_trap   <= 64'b0;
             mscratch     <= 64'b0;
             mepc         <= 64'b0;
             mcause       <= 64'b0;
@@ -94,25 +112,32 @@ module csr_machine (input wire clk,
             mip          <= 64'b0;
             mcycle       <= 64'b0;
             minstret     <= 64'b0;
-            trap_pc      <= 64'b0;
+            exc_en       <= 1'b0;
+            exc_val      <= 64'b0;
+            exc_code     <= 4'b0;
             time_reg     <= 64'b0;
-            illegal_trap <= 0;
-            end else begin
+        end else if (trap_taken || trap_done) begin
+                mepc    <= mepc_next;
+                mcause  <= mcause_next;
+                mtval   <= mtval_next;
+                mstatus_current <= mstatus;
+                mstatus <= mstatus_next;
+                mtvec_trap <= mtvec;
+        end else begin 
             // Increment counters
             mcycle                      <= mcycle + 1;
             time_reg                    <= time_reg + 1;
             if (instr_retired) minstret <= minstret + 1;
-            
+            exc_en       <= 1'b0;
+            exc_val      <= 64'b0;
+            exc_code     <= 4'b0;
             // CSR write
             if (we_csr) begin
                 if (priv_lvl < csr_required_priv(r_csr_addr)) begin
-                    // Illegal write trap
-                    illegal_trap <= 1;
-                    trap_pc      <= pc_addr;
-                    mcause       <= 64'd2;     // Illegal Instruction code (2)
-                    mtval        <= {52'b0, r_csr_addr}; // store CSR address for handler
-                    end else begin
-                    illegal_trap <= 0;
+                    exc_en       <= 1;
+                    exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
+                    exc_code     <= 4'd2;     // Illegal Instruction code (2)
+                end else begin
                     case (r_csr_addr)
                         `CSR_MSTATUS:  mstatus  <= w_csr_data;
                         `CSR_MIE:      mie      <= w_csr_data;
@@ -124,13 +149,19 @@ module csr_machine (input wire clk,
                         `CSR_MIP:      mip      <= w_csr_data;
                         `CSR_MCYCLE:   mcycle   <= w_csr_data;
                         `CSR_MINSTRET: minstret <= w_csr_data;
-                        // misa and time_reg are read-only
-                    endcase
+                        `CSR_MISA, `CSR_TIME, `CSR_INSTRET, `CSR_CYCLE: begin                    // they are read-only
+                            exc_en       <= 1;
+                            exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
+                            exc_code     <= 4'd2;                // Illegal Instruction code (2)
+                        end
+                        default: begin
+                            exc_en   <= 1;
+                            exc_val  <= {52'b0, r_csr_addr};
+                            exc_code <= 4'd2;
+                        end                                     
+                    endcase 
                 end
-                end else begin
-                illegal_trap <= 0;
             end
         end
     end
-    
 endmodule
