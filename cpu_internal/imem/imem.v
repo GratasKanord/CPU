@@ -14,7 +14,7 @@ reg [31:0] imem [0:MEM_SIZE - 1];
 integer i;
 initial begin
     //$readmemh("/home/gratas/riscv-tests/isa/rv64ui/add.mem", imem);
-    $readmemh("./ASMcode/tests/exceptions/exc_test.hex", imem);
+    $readmemh("./ASMcode/tests/exceptions/exc_0/exc_0_test.hex", imem);
 
     
 end
@@ -25,12 +25,16 @@ always @(*) begin
         exc_en      = 1'b0;
         exc_code    = 4'd0;
         exc_val     = 64'b0;
-    end else if (pc_addr[17:2] >= MEM_SIZE) begin // (if out of bounds)
-        //$display("TRAP!");
-        instruction = 32'h00000013; // NOP, so decoder doesn’t explode
+    end else if (pc_addr[17:2] >= MEM_SIZE && !exc_en) begin // (if out of bounds and we didn't proceed exception yet)
+        instruction = 32'h00000013; // NOP
         exc_en      = 1'b1;
         exc_code    = 4'd1;        // cause=1 (Instruction access fault)
         exc_val     = pc_addr;     // MTVAL = bad PC
+    end else if (pc_addr[17:2] >= MEM_SIZE && exc_en) begin  // (if out of bounds and we've proceeded exception already)
+        instruction = 32'h00000013; // NOP
+        exc_en      = 1'b0;
+        exc_code    = 4'd0;
+        exc_val     = 64'b0;
     end else begin
         instruction = imem[pc_addr[17:2]];
         exc_en      = 1'b0;

@@ -120,7 +120,6 @@ module csr_machine (input wire clk,
                 mepc    <= mepc_next;
                 mcause  <= mcause_next;
                 mtval   <= mtval_next;
-                mstatus_current <= mstatus;
                 mstatus <= mstatus_next;
                 mtvec_trap <= mtvec;
         end else begin 
@@ -128,6 +127,7 @@ module csr_machine (input wire clk,
             mcycle                      <= mcycle + 1;
             time_reg                    <= time_reg + 1;
             if (instr_retired) minstret <= minstret + 1;
+            mstatus_current <= mstatus;
             exc_en       <= 1'b0;
             exc_val      <= 64'b0;
             exc_code     <= 4'b0;

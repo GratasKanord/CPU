@@ -3,7 +3,9 @@ module decoder (input [31:0] instr,
                 regs_data2,                     // registers' values
                 input [63:0] csr_data,
                 input [63:0] pc_addr,
-                input [1:0] priv_lvl,
+                input [1:0]  priv_lvl,
+                input        trap_taken,
+                input        trap_done,
                 output reg [3:0] alu_op,
                 output reg [4:0] r_regs_addr1,  // 1st register's address
                 output reg [4:0] r_regs_addr2,  // 2nd register's address
@@ -49,119 +51,121 @@ module decoder (input [31:0] instr,
         is_LOAD         = 0;
         is_CSR          = 0;
         we_csr          = 0;
-        exc_en = 0;
-        exc_code = 0;
-        exc_val = 0;
+        exc_en     = 0;
+        exc_code   = 0;  
+        exc_val    = 0;
         
-        //Decoding instruction & exctracting it's parts
-        case (instr[6:0])
-            7'b0110011 : begin          //R-type
-                func3        = instr[14:12];
-                func7        = instr[31:25];
-                r_regs_addr1 = instr[19:15];
-                r_regs_addr2 = instr[24:20];
-                w_regs_addr  = instr[11:7];
-                we_regs      = 1;
-            end
-            7'b0010011 : begin          //I-type immediate
-                func3        = instr[14:12];
-                func7        = instr[31:25];
-                r_regs_addr1 = instr[19:15];
-                w_regs_addr  = instr[11:7];
-                imm          = {{52{instr[31]}}, instr[31:20]};
-                we_regs      = 1;
-                alu_B_src    = 1;
-            end
-            7'b0000011 : begin          //I-type load
-                func3        = instr[14:12];
-                r_regs_addr1 = instr[19:15];
-                w_regs_addr  = instr[11:7];
-                imm          = {{52{instr[31]}}, instr[31:20]};
-                we_regs      = 1;
-                we_dmem      = 0;
-                alu_B_src    = 1;
-                is_LOAD      = 1;
-            end
-            7'b1100111 : begin          //I-type jump
-                func3           = instr[14:12];
-                r_regs_addr1    = instr[19:15];
-                w_regs_addr     = instr[11:7];
-                imm             = {{52{instr[31]}}, instr[31:20]};
-                we_regs         = 1;
-                alu_B_src       = 1;
-                pc_branch_taken = 1;
-                is_JALR         = 1;
-            end
-            7'b0100011 : begin          //S-type store
-                func3        = instr[14:12];
-                r_regs_addr1 = instr[19:15];
-                r_regs_addr2 = instr[24:20];
-                imm          = {{52{instr[31]}}, instr[31:25], instr[11:7]};
-                we_regs      = 0;
-                we_dmem      = 1;
-                alu_B_src    = 1;
-            end
-            7'b1100011 : begin          //B-type
-                func3        = instr[14:12];
-                r_regs_addr1 = instr[19:15];
-                r_regs_addr2 = instr[24:20];
-                imm          = {{51{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
-                we_regs      = 0;
-                alu_B_src    = 1;
-            end
-            7'b0110111 : begin          //U-type LUI
-                w_regs_addr = instr[11:7];
-                imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
-                we_regs     = 1;
-                alu_B_src   = 1;
-            end
-            7'b0010111 : begin          //U-type AUIPC
-                w_regs_addr = instr[11:7];
-                imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
-                we_regs     = 1;
-                alu_B_src   = 1;
-            end
-            7'b1101111 : begin          //J-type JAL
-                w_regs_addr     = instr[11:7];
-                imm             = {{43{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
-                we_regs         = 1;
-                alu_B_src       = 1;
-                pc_branch_taken = 1;
-            end
-            7'b1110011 : begin          // System/SCR
-                sys_instr = instr[31:20];
-                if (sys_instr != 12'b0 &&
-                    sys_instr != 12'b1 &&
-                    sys_instr != 12'b001100000010) begin
-                    r_csr_addr = instr[31:20];
-                end                 
-                w_regs_addr  = instr[11:7];
-                r_regs_addr1 = instr[19:15];
-                func3        = instr[14:12];
-                imm          = {59'b0, instr[19:15]}; // for immediate versions (zimm)
-                is_CSR       = 1;
-                we_dmem      = 0;
-                we_regs      = (w_regs_addr != 0);
-            end
-            default: begin
-                exc_en   = 1'b1;
-                exc_code = 4'd2;       // Illegal instruction
-                exc_val  = instr;
-                func3        = 0;
-                func7        = 0;
-                r_regs_addr1 = 0;
-                r_regs_addr2 = 0;
-                w_regs_addr  = 0;
-                imm          = 0;
-                we_regs      = 0;
-                we_dmem      = 0;
-                alu_B_src    = 0;
-                is_JALR      = 0;
-                is_LOAD      = 0;
-                is_CSR       = 0;
-                we_csr       = 0;
-            end
-        endcase
+        if (!trap_taken && !trap_done) begin    // don't decode instruction during entering/exiting trap
+            //Decoding instruction & exctracting it's parts
+            case (instr[6:0])
+                7'b0110011 : begin          //R-type
+                    func3        = instr[14:12];
+                    func7        = instr[31:25];
+                    r_regs_addr1 = instr[19:15];
+                    r_regs_addr2 = instr[24:20];
+                    w_regs_addr  = instr[11:7];
+                    we_regs      = 1;
+                end
+                7'b0010011 : begin          //I-type immediate
+                    func3        = instr[14:12];
+                    func7        = instr[31:25];
+                    r_regs_addr1 = instr[19:15];
+                    w_regs_addr  = instr[11:7];
+                    imm          = {{52{instr[31]}}, instr[31:20]};
+                    we_regs      = 1;
+                    alu_B_src    = 1;
+                end
+                7'b0000011 : begin          //I-type load
+                    func3        = instr[14:12];
+                    r_regs_addr1 = instr[19:15];
+                    w_regs_addr  = instr[11:7];
+                    imm          = {{52{instr[31]}}, instr[31:20]};
+                    we_regs      = 1;
+                    we_dmem      = 0;
+                    alu_B_src    = 1;
+                    is_LOAD      = 1;
+                end
+                7'b1100111 : begin          //I-type jump
+                    func3           = instr[14:12];
+                    r_regs_addr1    = instr[19:15];
+                    w_regs_addr     = instr[11:7];
+                    imm             = {{52{instr[31]}}, instr[31:20]};
+                    we_regs         = 1;
+                    alu_B_src       = 1;
+                    pc_branch_taken = 1;
+                    is_JALR         = 1;
+                end
+                7'b0100011 : begin          //S-type store
+                    func3        = instr[14:12];
+                    r_regs_addr1 = instr[19:15];
+                    r_regs_addr2 = instr[24:20];
+                    imm          = {{52{instr[31]}}, instr[31:25], instr[11:7]};
+                    we_regs      = 0;
+                    we_dmem      = 1;
+                    alu_B_src    = 1;
+                end
+                7'b1100011 : begin          //B-type
+                    func3        = instr[14:12];
+                    r_regs_addr1 = instr[19:15];
+                    r_regs_addr2 = instr[24:20];
+                    imm          = {{51{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
+                    we_regs      = 0;
+                    alu_B_src    = 1;
+                end
+                7'b0110111 : begin          //U-type LUI
+                    w_regs_addr = instr[11:7];
+                    imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
+                    we_regs     = 1;
+                    alu_B_src   = 1;
+                end
+                7'b0010111 : begin          //U-type AUIPC
+                    w_regs_addr = instr[11:7];
+                    imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
+                    we_regs     = 1;
+                    alu_B_src   = 1;
+                end
+                7'b1101111 : begin          //J-type JAL
+                    w_regs_addr     = instr[11:7];
+                    imm             = {{43{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
+                    we_regs         = 1;
+                    alu_B_src       = 1;
+                    pc_branch_taken = 1;
+                end
+                7'b1110011 : begin          // System/SCR
+                    sys_instr = instr[31:20];
+                    if (sys_instr != 12'b0 &&
+                        sys_instr != 12'b1 &&
+                        sys_instr != 12'b001100000010) begin
+                        r_csr_addr = instr[31:20];
+                    end                 
+                    w_regs_addr  = instr[11:7];
+                    r_regs_addr1 = instr[19:15];
+                    func3        = instr[14:12];
+                    imm          = {59'b0, instr[19:15]}; // for immediate versions (zimm)
+                    is_CSR       = 1;
+                    we_dmem      = 0;
+                    we_regs      = (w_regs_addr != 0);
+                end
+                default: begin
+                    exc_en   = 1'b1;
+                    exc_code = 4'd2;       // Illegal instruction
+                    exc_val  = instr;
+                    func3        = 0;
+                    func7        = 0;
+                    r_regs_addr1 = 0;
+                    r_regs_addr2 = 0;
+                    w_regs_addr  = 0;
+                    imm          = 0;
+                    we_regs      = 0;
+                    we_dmem      = 0;
+                    alu_B_src    = 0;
+                    is_JALR      = 0;
+                    is_LOAD      = 0;
+                    is_CSR       = 0;
+                    we_csr       = 0;
+                end
+            endcase
+        end
     end
     
     // Decoding ALU opcode for R-type instructions
@@ -244,9 +248,15 @@ module decoder (input [31:0] instr,
                 3'b011: dmem_word_sel  = 8'b1111_1111; // SD
                 default: dmem_word_sel = 8'b0000_0000;
             endcase
-            end else if (instr[6:0] == 7'b0000011) begin
-            alu_op        = 4'b0000;
-            dmem_word_sel = 8'b0000_0000;
+        end else if (instr[6:0] == 7'b0000011) begin
+            alu_op = 4'b0000;
+            case (func3)
+                3'b000: dmem_word_sel = 8'b0000_0001; // LB
+                3'b001: dmem_word_sel = 8'b0000_0011; // LH
+                3'b010: dmem_word_sel = 8'b0000_1111; // LW
+                3'b011: dmem_word_sel = 8'b1111_1111; // LD
+                default: dmem_word_sel = 8'b0000_0000;
+            endcase
         end
     end
     
@@ -254,9 +264,7 @@ module decoder (input [31:0] instr,
     always @(*) begin
         we_csr     = 0;
         w_csr_data = 64'b0;
-        exc_en     = 0;
-        exc_code   = 0;  
-        exc_val    = 0;
+        
         mret = 0;
 
         if (instr[6:0] == 7'b1110011) begin

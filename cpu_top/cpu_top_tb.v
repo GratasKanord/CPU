@@ -27,14 +27,9 @@ module cpu_top_tb;
     $display("\nREGS");
     uut.u_regfile.dump_regs();
 
-    // $display("\nMEM");
-    // uut.u_dmem.dump_mem();
+    $display("\nMEM");
+    uut.u_dmem.dump_mem();
 
-    // #5;
-    // mret = 1;
-    // #10;
-    // mret = 0;
-    // #100;
     $finish;
   end
 
@@ -44,19 +39,10 @@ module cpu_top_tb;
   end
 
   initial begin
-    // Wait until trap occurs
-    wait (uut.exc_en == 1);
+    
 
-    // Put mret instruction in imem
-    //uut.u_imem.imem[6] = 32'h30200073;
+    //uut.u_imem.imem[4] = 32'hF; // is used for exc_2 test
 
-    // Give some clock cycles for trap handler to take effect
-    // @(posedge clk);
-    // #5
-    // mret = 1;
-    // @(posedge clk);
-    // #5
-    // mret = 0;
-end
+  end
 
 endmodule

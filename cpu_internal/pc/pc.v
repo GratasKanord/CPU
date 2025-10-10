@@ -23,25 +23,24 @@ module pc (input wire clk,
         if (rst) begin
             pc_addr  <= 64'b0;  // boot address
         end else if (pc_en) begin
-            // Check instruction address alignment
             case (pc_mode_sel)
                 2'b00 : pc_addr <= pc_addr + 4;
                 2'b01 : pc_addr <= pc_branch;
                 2'b10 : pc_addr <= pc_trap;
                 2'b11 : pc_addr <= pc_ret;
             endcase
-            end
-        end
+        end else pc_addr <= pc_addr;
+    end
 
     always @(*) begin
         if (|pc_addr[1:0]) begin
-                exc_en = 1'b1;
-                exc_code = 4'd0;     // cause = 0 - instrucion misalignment code
-                exc_val = pc_addr;
-            end else begin
-                exc_en = 1'b0;
-                exc_code = 4'd0;     // cause = 0 - instrucion misalignment code
-                exc_val = 64'b0;    // save misaligned PC (for trap handler)
-            end
+            exc_en = 1'b1;
+            exc_code = 4'd0;     // cause = 0 - instrucion misalignment code
+            exc_val = pc_addr;
+        end else begin
+            exc_en = 1'b0;
+            exc_code = 4'd0;     
+            exc_val = 64'b0;    // save misaligned PC (for trap handler)
+        end
     end
 endmodule
