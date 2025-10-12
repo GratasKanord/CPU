@@ -31,6 +31,7 @@ module csr_machine (input wire clk,
     reg [63:0] mcycle;
     reg [63:0] minstret;
     reg [63:0] time_reg;  // read-only
+    reg [63:0] mhartid;   // read-only
     
     // CSR Addresses
     `define CSR_MSTATUS 12'h300
@@ -47,9 +48,11 @@ module csr_machine (input wire clk,
     `define CSR_CYCLE 12'hC00
     `define CSR_INSTRET 12'hC02
     `define CSR_TIME 12'hC01
+    `define CSR_MHARTID 12'hF14
     
-    // Hardwired misa
+    // Hardwired intstruction set and number of threads
     initial misa = 64'h40000000;  // RV64I
+    initial mhartid = 64'h0;
     
     // Privilege requirement lookup : 0 = U,1 = S,3 = M
     function [1:0] csr_required_priv(input [11:0] addr);
@@ -57,7 +60,7 @@ module csr_machine (input wire clk,
             `CSR_MSTATUS, `CSR_MISA, `CSR_MIE, `CSR_MTVEC,
             `CSR_MSCRATCH, `CSR_MEPC, `CSR_MCAUSE, `CSR_MTVAL, `CSR_MIP:
             csr_required_priv = 2'b11;  // M-mode
-            `CSR_MCYCLE, `CSR_MINSTRET, `CSR_CYCLE, `CSR_INSTRET, `CSR_TIME:
+            `CSR_MCYCLE, `CSR_MINSTRET, `CSR_CYCLE, `CSR_INSTRET, `CSR_TIME, `CSR_MHARTID:
             csr_required_priv          = 2'b00;  // readable in any mode
             default: csr_required_priv = 2'b11;
         endcase
@@ -84,6 +87,7 @@ module csr_machine (input wire clk,
             `CSR_CYCLE:    csr_data = mcycle;
             `CSR_INSTRET:  csr_data = minstret;
             `CSR_TIME:     csr_data = time_reg;
+            `CSR_MHARTID:  csr_data = mhartid;
             default: begin
                 exc_en       = 1;
                 exc_val      = {52'b0, r_csr_addr}; // store CSR address for handler
@@ -149,7 +153,7 @@ module csr_machine (input wire clk,
                         `CSR_MIP:      mip      <= w_csr_data;
                         `CSR_MCYCLE:   mcycle   <= w_csr_data;
                         `CSR_MINSTRET: minstret <= w_csr_data;
-                        `CSR_MISA, `CSR_TIME, `CSR_INSTRET, `CSR_CYCLE: begin                    // they are read-only
+                        `CSR_MISA, `CSR_TIME, `CSR_INSTRET, `CSR_CYCLE, `CSR_MHARTID: begin  // they are read-only
                             exc_en       <= 1;
                             exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
                             exc_code     <= 4'd2;                // Illegal Instruction code (2)

@@ -12,7 +12,7 @@ module dmem (
     output reg  [63:0] exc_val           // Exception value (faulting address)
 );
 
-    localparam DMEM_SIZE = 1024;         // Bytes in data memory
+    localparam DMEM_SIZE = 8192;         // Bytes in data memory
     reg [7:0] dmem [0:DMEM_SIZE-1];      // Byte-addressable memory
 
     // --------------------------------------------------------------

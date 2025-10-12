@@ -80,7 +80,8 @@ module trap_handler (
             mstatus_next[7]      <= mstatus_current[3];   // MPIE <- MIE
             mstatus_next[3]      <= 1'b0;                 // MIE <- 0
             mstatus_next[12:11]  <= priv_lvl;            // MPP <- current priv
-            pc_trap_next   <= 64'd24;  // simulation: jump to trap handler (used for 0 amd 1 exc test)
+            pc_trap_next     <= mtvec;
+            //pc_trap_next   <= 64'd24;  // simulation: jump to trap handler (used for 0 amd 1 exc test)
             //pc_trap_next   <= 64'd32;  // simulation: jump to trap handler (used for 2, 3 exc test)
             //pc_trap_next   <= 64'd28;  // simulation: jump to trap handler (used for 4, 5, 6, 7 exc test)
             priv_lvl_next  <= 2'b11;   // enter M-mode
@@ -89,8 +90,8 @@ module trap_handler (
             trap_done <= 1'b1;
             // --- Trap exit ---
             pc_ret_taken   <= 1'b1;
-            //pc_ret         <= mepc_next;                  // this is how it should be when I have OS trap handler
-            pc_ret         <= mepc_next + 14;             //  +14 here is for testing exc_0 (misaligned instr)
+            pc_ret         <= mepc_next;                  // this is how it should be when I have OS trap handler
+            //pc_ret         <= mepc_next + 14;             //  +14 here is for testing exc_0 (misaligned instr)
             //pc_ret         <= 64'd32;                     // this one for testing exc_1 (instr access fault)
             //pc_ret         <= 64'd40;                   // this one for testing exc_2 (illegal instr), exc_3 (ebreak)
             //pc_ret           <= 64'd36;                      // this one for testing exc 5,5,6,7

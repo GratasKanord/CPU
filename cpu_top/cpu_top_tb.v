@@ -21,14 +21,29 @@ module cpu_top_tb;
     rst = 0;
   end
 
-  initial begin
-    #150; 
-    
-    $display("\nREGS");
-    uut.u_regfile.dump_regs();
+  // Monitor TOHOST for test result
+  always @(posedge clk) begin
+      if (uut.u_dmem.we_dmem && uut.u_dmem.r_dmem_addr == 64'h00001000) begin
+          $display("TOHOST write detected: %h", uut.u_dmem.w_dmem_data);
+          if (uut.u_dmem.w_dmem_data == 64'd1) begin
+              $display("TEST PASSED");
+              $finish;
+          end else begin
+              $display("TEST FAILED: value = %h", uut.u_dmem.w_dmem_data);
+              $finish;
+          end
+      end
+  end
 
-    $display("\nMEM");
-    uut.u_dmem.dump_mem();
+  initial begin
+    //#150; for simulating ASM programs
+    #50000; // for compliance tests
+    
+    // $display("\nREGS");
+    // uut.u_regfile.dump_regs();
+
+    // $display("\nMEM");
+    // uut.u_dmem.dump_mem();
 
     $finish;
   end
