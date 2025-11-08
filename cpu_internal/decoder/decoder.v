@@ -70,6 +70,15 @@ module decoder (input [31:0] instr,
                     w_regs_addr  = instr[11:7];
                     we_regs      = 1;
                 end
+                7'b0111011 : begin          // R-type 32-bit
+                    func3        = instr[14:12];
+                    func7        = instr[31:25];
+                    r_regs_addr1 = instr[19:15];
+                    r_regs_addr2 = instr[24:20];
+                    w_regs_addr  = instr[11:7];
+                    we_regs      = 1;
+                    is_32bit     = 1;        
+                end
                 7'b0010011 : begin          //I-type immediate
                     func3        = instr[14:12];
                     func7        = instr[31:25];
@@ -217,7 +226,19 @@ module decoder (input [31:0] instr,
             endcase
         end
     end
-    
+    // Decoding ALU opcode for R-type 32-bit instructions
+    always @(*) begin
+        if (instr[6:0] == 7'b0111011) begin
+            case ({func7, func3})
+                10'b0000000000: alu_op = 4'b0000; // ADDW
+                10'b0100000000: alu_op = 4'b0001; // SUBW
+                10'b0000000001: alu_op = 4'b1101; // SLLW
+                10'b0000000101: alu_op = 4'b1110; // SRLW
+                10'b0100000101: alu_op = 4'b1111; // SRAW
+                default: alu_op        = 4'b1010; // NOP
+            endcase
+        end
+    end
     // Decoding ALU opcode for I-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b0010011) begin
