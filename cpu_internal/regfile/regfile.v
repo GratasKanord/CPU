@@ -32,7 +32,7 @@ module regfile (input clk,
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             for (i = 0; i < 32; i = i + 1) regs[i] <= 64'b0;
-            end else if (we_regs && (w_regs_addr != 0)) begin
+        end else if (we_regs && (w_regs_addr != 0)) begin
             regs[w_regs_addr] <= w_regs_data;
         end
     end
