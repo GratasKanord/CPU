@@ -13,7 +13,7 @@ reg [31:0] imem [0:MEM_SIZE - 1];
 // Hardcoded instructions
 integer i;
 initial begin
-    // $readmemh("./ASMcode/tests/exceptions/exc_0/exc_0_test.hex", imem);
+    //$readmemh("./ASMcode/tests/instructions/auipc/test.hex", imem);
     $readmemh("./compl_tests/rv64ui-p-add.hex", imem);
     
     

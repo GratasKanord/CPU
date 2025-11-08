@@ -17,6 +17,8 @@ module decoder (input [31:0] instr,
                 output reg is_JALR,
                 output reg is_LOAD,
                 output reg is_CSR,
+                output reg is_32bit,
+                output reg is_auipc,
                 output reg [63:0] imm,
                 output reg pc_branch_taken,
                 output [63:0] pc_branch_target,
@@ -50,6 +52,8 @@ module decoder (input [31:0] instr,
         is_JALR         = 0;
         is_LOAD         = 0;
         is_CSR          = 0;
+        is_32bit        = 0;
+        is_auipc        = 0;
         we_csr          = 0;
         exc_en     = 0;
         exc_code   = 0;  
@@ -74,6 +78,16 @@ module decoder (input [31:0] instr,
                     imm          = {{52{instr[31]}}, instr[31:20]};
                     we_regs      = 1;
                     alu_B_src    = 1;
+                end
+                7'b0011011 : begin          //I-type immediate 32-bit
+                    func3        = instr[14:12];
+                    func7        = instr[31:25];
+                    r_regs_addr1 = instr[19:15];
+                    w_regs_addr  = instr[11:7];
+                    imm          = {{52{instr[31]}}, instr[31:20]};
+                    we_regs      = 1;
+                    alu_B_src    = 1;
+                    is_32bit     = 1;
                 end
                 7'b0000011 : begin          //I-type load
                     func3        = instr[14:12];
@@ -122,6 +136,7 @@ module decoder (input [31:0] instr,
                     w_regs_addr = instr[11:7];
                     imm         = {{32{instr[31]}}, instr[31:12], 12'b0};
                     we_regs     = 1;
+                    is_auipc    = 1;
                     alu_B_src   = 1;
                 end
                 7'b1101111 : begin          //J-type JAL
@@ -146,6 +161,20 @@ module decoder (input [31:0] instr,
                     we_dmem      = 0;
                     we_regs      = (w_regs_addr != 0);
                 end
+                7'b0001111: begin          // FENCE instruction
+                    // Treat as NOP
+                    we_regs = 0;
+                    we_dmem = 0;
+                    we_csr = 0;
+                    exc_en = 0;
+                    alu_op = 4'b1010; // NOP
+                    pc_branch_taken = 0;
+                    is_JALR = 0;
+                    is_LOAD = 0;
+                    is_CSR = 0;
+                    is_32bit = 0;
+                    mret = 0;
+                end
                 default: begin
                     exc_en   = 1'b1;
                     exc_code = 4'd2;       // Illegal instruction
@@ -162,6 +191,8 @@ module decoder (input [31:0] instr,
                     is_JALR      = 0;
                     is_LOAD      = 0;
                     is_CSR       = 0;
+                    is_32bit     = 0;
+                    is_auipc     = 0;
                     we_csr       = 0;
                 end
             endcase
@@ -187,7 +218,7 @@ module decoder (input [31:0] instr,
         end
     end
     
-    // Decoding ALU opcode for I-type immediate instructions
+    // Decoding ALU opcode for I-type instructions
     always @(*) begin
         if (instr[6:0] == 7'b0010011) begin
             case (func3)
@@ -210,6 +241,26 @@ module decoder (input [31:0] instr,
             endcase
         end
     end
+
+    // Decoding ALU opcode for I-type instructions 32 bit
+    always @(*) begin
+        if (instr[6:0] == 7'b0011011) begin
+            case (func3)
+                3'b000: alu_op = 4'b0000; // ADDIW
+                3'b001: alu_op = 4'b1101; // SLLIW
+                3'b101: begin              // SRLIW / SRAIW
+                    if (func7 == 7'b0000000)
+                        alu_op = 4'b1110; // SRLIW
+                    else if (func7 == 7'b0100000)
+                        alu_op = 4'b1111; // SRAIW
+                    else
+                        alu_op = 4'b1010; // NOP/default
+                end
+                default: alu_op = 4'b1010; // NOP/default
+            endcase
+        end
+    end
+
     
     //ALU opcode for I-type jump, U-type and J-type instructions
     always @(*) begin
@@ -264,9 +315,7 @@ module decoder (input [31:0] instr,
     always @(*) begin
         we_csr     = 0;
         w_csr_data = 64'b0;
-        
         mret = 0;
-
         if (instr[6:0] == 7'b1110011) begin
             case (func3)
                 3'b0: begin  // Exceptions and system instructions

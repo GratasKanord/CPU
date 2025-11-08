@@ -16,6 +16,8 @@ module cpu_top (input clk,
     wire is_JALR;
     wire is_LOAD;
     wire is_CSR;
+    wire is_32bit;
+    wire is_auipc;
     wire [63:0] w_result;
     wire [63:0] dmem_data;
     wire [11:0] r_csr_addr;
@@ -29,19 +31,21 @@ module cpu_top (input clk,
     wire trap_taken;
     wire trap_done;
     wire [63:0] mepc_next;
+    wire [63:0] mepc_out;
     wire [63:0] mcause_next;
     wire [63:0] mtval_next;
     wire [63:0] mstatus_next;
     wire [63:0] mstatus_current;
     wire [63:0] mtvec_trap;
     wire [63:0] pc_trap_next;
-    wire pc_ret_taken;
     wire [63:0] pc_ret;
     wire mret;
     
     assign w_result = (is_JALR) ? pc_addr + 4 :
                       (is_LOAD ? dmem_data :
                       (is_CSR ? csr_data : alu_result));
+
+    wire [63:0] input_alu_A = (is_auipc) ? pc_addr : regs_data1;
 
     assign exc_en = exc_pc_en | exc_imem_en | exc_dmem_en | exc_decoder_en | exc_csr_en;
     assign exc_code = exc_pc_en ? exc_pc_code : 
@@ -79,7 +83,6 @@ module cpu_top (input clk,
     .pc_trap_next(pc_trap_next),
     .trap_taken(trap_taken),
     .trap_done(trap_done),
-    .pc_ret_taken(pc_ret_taken),
     .pc_ret(pc_ret),
     .mepc_next(mepc_next),
     .mcause_next(mcause_next),
@@ -100,9 +103,11 @@ module cpu_top (input clk,
     .trap_taken(trap_taken),
     .trap_done(trap_done),
     .mepc_next(mepc_next),
+    .mepc_out(mepc_out),
     .mcause_next(mcause_next),
     .mtval_next(mtval_next),
     .mstatus_next(mstatus_next),
+    .mret(mret),
     .csr_data(csr_data),
     .exc_en(exc_csr_en),
     .exc_code(exc_csr_code),
@@ -133,6 +138,8 @@ module cpu_top (input clk,
     .is_JALR(is_JALR),
     .is_LOAD(is_LOAD),
     .is_CSR(is_CSR),
+    .is_32bit(is_32bit),
+    .is_auipc(is_auipc),
     .r_csr_addr(r_csr_addr),
     .we_csr(we_csr),
     .csr_data(csr_data),
@@ -185,10 +192,10 @@ module cpu_top (input clk,
     .pc_en(1'b1),
     .pc_branch_taken(pc_branch_taken),
     .pc_trap_taken(trap_taken),
-    .pc_ret_taken(pc_ret_taken),
+    .trap_done(trap_done),
     .pc_branch(pc_branch_target),
     .pc_trap(pc_trap_next),
-    .pc_ret(pc_ret),
+    .mepc_out(mepc_out),
     .pc_addr(pc_addr),
     .exc_en(exc_pc_en),
     .exc_code(exc_pc_code),
@@ -197,9 +204,10 @@ module cpu_top (input clk,
     
     alu u_alu(
     .alu_op(alu_op),
-    .input_alu_A(regs_data1),
+    .input_alu_A(input_alu_A),
     .input_alu_B(input_alu_B),
     .alu_result(alu_result),
+    .is_32bit(is_32bit),
     .alu_cout()
     );
     

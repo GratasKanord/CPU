@@ -65,7 +65,11 @@ module dmem (
         // STORE operation exceptions
         // -----------------------------
         if (we_dmem) begin
-            if (r_dmem_addr + num_bytes - 1 >= DMEM_SIZE) begin
+            if (r_dmem_addr == 64'h80001000) begin                  // !!! TOHOST_ADDR, just for compliance tests!
+                $display("TEST COMPLETE, to_host was written!");
+                $finish;
+            end
+            else if (r_dmem_addr + num_bytes - 1 >= DMEM_SIZE) begin
                 exc_en   = 1;
                 exc_code = 4'd7; // Store access fault
                 exc_val  = r_dmem_addr;

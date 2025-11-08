@@ -23,7 +23,6 @@ module trap_handler (
     output reg  [63:0] pc_trap_next,
     output reg         trap_taken,
     output reg         trap_done,
-    output reg         pc_ret_taken,
     output reg  [63:0] pc_ret,
 
     // Outputs to CSR file
@@ -39,15 +38,14 @@ module trap_handler (
     wire [63:0] cause_val = irq_en ? irq_val  : exc_val;
     wire        is_irq    = irq_en;
 
+    // trap trigger for the system
     
     always @(posedge clk or posedge rst) begin
     if (rst) begin
         // Reset all outputs and internal state
-        trap_taken     <= 1'b0;
         trap_done      <= 1'b0;
-        pc_ret_taken   <= 1'b0;
+        trap_taken     <= 1'b0;
         pc_trap_next   <= 64'b0;
-        pc_ret         <= 64'b0;
         mepc_next      <= 64'b0;
         mcause_next    <= 64'b0;
         mtval_next     <= 64'b0;
@@ -55,22 +53,20 @@ module trap_handler (
         priv_lvl_next  <= 2'b11;  // default M-mode
     end
     else begin
-        trap_taken     <= 1'b0;
         trap_done      <= 1'b0;
-        pc_ret_taken   <= 1'b0;
+        trap_taken     <= 1'b0;
         pc_trap_next   <= pc_trap_next;  // hold value by default
-        pc_ret         <= pc_ret;         // hold value by default
-        mepc_next      <= mepc_next;      // hold value by default
-        mcause_next    <= mcause_next;    // hold value by default
-        mtval_next     <= mtval_next;     // hold value by default
-        mstatus_next   <= mstatus_next;   // hold value by default
-        priv_lvl_next  <= priv_lvl_next;  // hold value by default
+        mcause_next    <= mcause_next;    
+        mepc_next      <= mepc_next;        
+        mtval_next     <= mtval_next;     
+        mstatus_next   <= mstatus_next;   
+        priv_lvl_next  <= priv_lvl_next;  
 
         if (exc_en || irq_en) begin
-            // --- Trap entry ---
             if (trap_taken) begin
-                trap_taken     <= 1'b0;
-            end else trap_taken     <= 1'b1;
+                trap_taken <= 1'b0;
+            end else trap_taken <= 1'b1;
+            // --- Trap entry ---
             mepc_next      <= pc_addr;
             mcause_next    <= {irq_en, 59'b0, cause_code};
             mtval_next     <= cause_val;
@@ -87,15 +83,8 @@ module trap_handler (
             priv_lvl_next  <= 2'b11;   // enter M-mode
         end
         else if (mret) begin
-            trap_done <= 1'b1;
             // --- Trap exit ---
-            pc_ret_taken   <= 1'b1;
-            pc_ret         <= mepc_next;                  // this is how it should be when I have OS trap handler
-            //pc_ret         <= mepc_next + 14;             //  +14 here is for testing exc_0 (misaligned instr)
-            //pc_ret         <= 64'd32;                     // this one for testing exc_1 (instr access fault)
-            //pc_ret         <= 64'd40;                   // this one for testing exc_2 (illegal instr), exc_3 (ebreak)
-            //pc_ret           <= 64'd36;                      // this one for testing exc 5,5,6,7
-
+            trap_done <= 1'b1;
             priv_lvl_next  <= mstatus_current[12:11];       // restore priv_lvl
 
             // Update mstatus on mret

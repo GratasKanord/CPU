@@ -2,12 +2,28 @@ module alu (
     input  [3:0]  alu_op,
     input  [63:0] input_alu_A,
     input  [63:0] input_alu_B,
+    input         is_32bit,
     output [63:0] alu_result,
     output        alu_cout
 );
     wire [62:0] carry_chain; 
     wire [63:0] slice_result;
     wire [63:0] shift_result;
+
+    // For 32b operations
+    wire [31:0] alu_in_A_32  = input_alu_A[31:0];
+    wire [31:0] alu_in_B_32  = input_alu_B[31:0];
+    wire [31:0] addiw_result_32  = alu_in_A_32 + alu_in_B_32;
+    wire [31:0] slliw_result_32  = alu_in_A_32 << input_alu_B[4:0];
+    wire [31:0] srliw_result_32  = alu_in_A_32 >> input_alu_B[4:0];
+    wire [31:0] sraiw_result_32  = $signed(alu_in_A_32) >>> input_alu_B[4:0];
+
+    // Sign-extend to 64-bit
+    wire [63:0] addiw_result = {{32{addiw_result_32[31]}}, addiw_result_32};
+    wire [63:0] slliw_result = {{32{slliw_result_32[31]}}, slliw_result_32};
+    wire [63:0] srliw_result = {{32{srliw_result_32[31]}}, srliw_result_32};
+    wire [63:0] sraiw_result = {{32{sraiw_result_32[31]}}, sraiw_result_32};
+
 
     // Instance of the LSB slice of ALU    
     alu_lsb u_lsb (
@@ -49,7 +65,11 @@ module alu (
                           (alu_op == 4'b1111) ? ($signed(input_alu_A) >>> input_alu_B[5:0]) : 0; // SRA
 
     // Final ALU MUX
-    assign alu_result = (alu_op == 4'b1101 || alu_op == 4'b1110 || alu_op == 4'b1111) ? shift_result :           // Shift output
-                        (alu_op == 4'b1011 || alu_op == 4'b1100) ? ({63'b0, slice_result[63]}) : slice_result;   // SLT(SLTU) output or usual output
-    
+    assign alu_result = (is_32bit && alu_op == 4'b0000) ? addiw_result :
+                    (is_32bit && alu_op == 4'b1101) ? slliw_result :
+                    (is_32bit && alu_op == 4'b1110) ? srliw_result :
+                    (is_32bit && alu_op == 4'b1111) ? sraiw_result :
+                    (alu_op == 4'b1101 || alu_op == 4'b1110 || alu_op == 4'b1111) ? shift_result :           
+                    (alu_op == 4'b1011 || alu_op == 4'b1100) ? ({63'b0, slice_result[63]}) : slice_result;
+
 endmodule

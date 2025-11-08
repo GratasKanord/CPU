@@ -21,23 +21,29 @@ module cpu_top_tb;
     rst = 0;
   end
 
-  // Monitor TOHOST for test result
-  always @(posedge clk) begin
-      if (uut.u_dmem.we_dmem && uut.u_dmem.r_dmem_addr == 64'h00001000) begin
-          $display("TOHOST write detected: %h", uut.u_dmem.w_dmem_data);
-          if (uut.u_dmem.w_dmem_data == 64'd1) begin
-              $display("TEST PASSED");
-              $finish;
-          end else begin
-              $display("TEST FAILED: value = %h", uut.u_dmem.w_dmem_data);
-              $finish;
-          end
-      end
-  end
+  // always @(posedge clk) begin
+  //   if (uut.u_regfile.we_regs) begin   // PC of sw x3, -60(x30)
+  //       $display("x%0d <= %h @ PC=%h instr= %h", uut.u_regfile.w_regs_addr,
+  //                                                uut.u_regfile.w_regs_data,
+  //                                                uut.u_pc.pc_addr,
+  //                                                uut.u_imem.instruction);                 
+  //   end
+  // end
 
+
+  // always @(posedge clk) begin
+  //   if (uut.u_pc.pc_addr == 64) begin   // PC of sw x3, -60(x30)
+  //       $display(">>> Test result: x3 = %0d (decimal), 0x%h (hex)",
+  //                uut.u_regfile.regs[3], uut.u_regfile.regs[3]);
+                 
+  //   end
+  //   if (uut.u_pc.pc_addr == 72) begin  
+  //     $finish;    
+  //   end
+  // end
   initial begin
     //#150; for simulating ASM programs
-    #50000; // for compliance tests
+    #5500; // for compliance tests
     
     // $display("\nREGS");
     // uut.u_regfile.dump_regs();

@@ -13,10 +13,12 @@ module csr_top (
     input  wire [63:0] mcause_next,
     input  wire [63:0] mtval_next,
     input  wire [63:0] mstatus_next, 
+    input  wire        mret,
     output reg  [63:0] csr_data,          // read data
     output reg         exc_en,            // exception enable
     output reg  [3:0]  exc_code,          // exception code
     output reg  [63:0] exc_val,            // exception value
+    output wire [63:0] mepc_out,
     output wire  [63:0] mstatus_current,
     output wire  [63:0] mtvec_trap
 );
@@ -39,9 +41,11 @@ module csr_top (
         .trap_taken(trap_taken),
         .trap_done(trap_done),
         .mepc_next(mepc_next),
+        .mepc_out(mepc_out),
         .mcause_next(mcause_next),
         .mtval_next(mtval_next),
         .mstatus_next(mstatus_next),
+        .mret(mret),
         .csr_data(rdata_m),
         .exc_en(trap_m),
         .exc_code(code_m),   

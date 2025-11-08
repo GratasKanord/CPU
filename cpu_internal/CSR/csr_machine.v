@@ -8,23 +8,25 @@ module csr_machine (input wire clk,
                     input wire [1:0] priv_lvl,   // current CPU privilege: 0 = U, 1 = S, 3 = M
                     input wire       trap_taken,
                     input wire       trap_done,
-                    input  wire [63:0] mepc_next,
-                    input  wire [63:0] mcause_next,
-                    input  wire [63:0] mtval_next,
-                    input  wire [63:0] mstatus_next, 
+                    input wire [63:0] mepc_next,
+                    input wire [63:0] mcause_next,
+                    input wire [63:0] mtval_next,
+                    input wire [63:0] mstatus_next,
+                    input wire        mret,
                     output reg [63:0] csr_data,
                     output reg exc_en,            // exceptions handling
                     output reg [3:0] exc_code,
                     output reg [63:0] exc_val,
                     output reg [63:0] mstatus_current,
-                    output reg [63:0] mtvec_trap);  
+                    output reg [63:0] mtvec_trap,
+                    output wire [63:0] mepc_out);      
     // Machine CSRs
     reg [63:0] mstatus;
+    reg [63:0] mepc;    
     reg [63:0] misa;  // read-only
     reg [63:0] mie;
     reg [63:0] mtvec;
     reg [63:0] mscratch;
-    reg [63:0] mepc;
     reg [63:0] mcause;
     reg [63:0] mtval;
     reg [63:0] mip;
@@ -32,6 +34,9 @@ module csr_machine (input wire clk,
     reg [63:0] minstret;
     reg [63:0] time_reg;  // read-only
     reg [63:0] mhartid;   // read-only
+    reg [63:0] pmpaddr0;
+    reg [63:0] pmpcfg0;
+    reg [63:0] mideleg;
     
     // CSR Addresses
     `define CSR_MSTATUS 12'h300
@@ -49,16 +54,23 @@ module csr_machine (input wire clk,
     `define CSR_INSTRET 12'hC02
     `define CSR_TIME 12'hC01
     `define CSR_MHARTID 12'hF14
+    `define CSR_PMPADDR0 12'h3B0
+    `define CSR_PMPCFG0 12'h3A0
+    `define CSR_MIDELEG 12'h303
     
     // Hardwired intstruction set and number of threads
     initial misa = 64'h40000000;  // RV64I
     initial mhartid = 64'h0;
+
+    // Address output for PC
+    assign mepc_out = mepc;
     
     // Privilege requirement lookup : 0 = U,1 = S,3 = M
     function [1:0] csr_required_priv(input [11:0] addr);
         case (addr)
             `CSR_MSTATUS, `CSR_MISA, `CSR_MIE, `CSR_MTVEC,
-            `CSR_MSCRATCH, `CSR_MEPC, `CSR_MCAUSE, `CSR_MTVAL, `CSR_MIP:
+            `CSR_MSCRATCH, `CSR_MEPC, `CSR_MCAUSE, `CSR_MTVAL,
+            `CSR_MIP, `CSR_PMPADDR0, `CSR_PMPCFG0, `CSR_MIDELEG:
             csr_required_priv = 2'b11;  // M-mode
             `CSR_MCYCLE, `CSR_MINSTRET, `CSR_CYCLE, `CSR_INSTRET, `CSR_TIME, `CSR_MHARTID:
             csr_required_priv          = 2'b00;  // readable in any mode
@@ -82,6 +94,9 @@ module csr_machine (input wire clk,
             `CSR_MCAUSE:   csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mcause : 64'b0;
             `CSR_MTVAL:    csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mtval : 64'b0;
             `CSR_MIP:      csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mip : 64'b0;
+            `CSR_PMPADDR0: csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? pmpaddr0 : 64'b0;
+            `CSR_PMPCFG0:  csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? pmpcfg0 : 64'b0;
+            `CSR_MIDELEG:  csr_data = (priv_lvl >= csr_required_priv(r_csr_addr)) ? mideleg : 64'b0;
             `CSR_MCYCLE:   csr_data = mcycle;
             `CSR_MINSTRET: csr_data = minstret;
             `CSR_CYCLE:    csr_data = mcycle;
@@ -116,6 +131,9 @@ module csr_machine (input wire clk,
             mip          <= 64'b0;
             mcycle       <= 64'b0;
             minstret     <= 64'b0;
+            pmpaddr0     <= 64'b0;
+            pmpcfg0      <= 64'b0;
+            mideleg      <= 64'b0;
             exc_en       <= 1'b0;
             exc_val      <= 64'b0;
             exc_code     <= 4'b0;
@@ -153,6 +171,9 @@ module csr_machine (input wire clk,
                         `CSR_MIP:      mip      <= w_csr_data;
                         `CSR_MCYCLE:   mcycle   <= w_csr_data;
                         `CSR_MINSTRET: minstret <= w_csr_data;
+                        `CSR_PMPADDR0: pmpaddr0 <= w_csr_data;
+                        `CSR_PMPCFG0:  pmpcfg0  <= w_csr_data;
+                        `CSR_MIDELEG:  mideleg  <= w_csr_data;    
                         `CSR_MISA, `CSR_TIME, `CSR_INSTRET, `CSR_CYCLE, `CSR_MHARTID: begin  // they are read-only
                             exc_en       <= 1;
                             exc_val      <= {52'b0, r_csr_addr}; // store CSR address for handler
