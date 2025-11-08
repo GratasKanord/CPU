@@ -14,15 +14,17 @@ module alu (
     wire [31:0] alu_in_A_32  = input_alu_A[31:0];
     wire [31:0] alu_in_B_32  = input_alu_B[31:0];
     wire [31:0] addiw_result_32  = alu_in_A_32 + alu_in_B_32;
+    wire [31:0] subw_result_32  = alu_in_A_32 - alu_in_B_32;
     wire [31:0] slliw_result_32  = alu_in_A_32 << input_alu_B[4:0];
     wire [31:0] srliw_result_32  = alu_in_A_32 >> input_alu_B[4:0];
     wire [31:0] sraiw_result_32  = $signed(alu_in_A_32) >>> input_alu_B[4:0];
-
+    
     // Sign-extend to 64-bit
     wire [63:0] addiw_result = {{32{addiw_result_32[31]}}, addiw_result_32};
     wire [63:0] slliw_result = {{32{slliw_result_32[31]}}, slliw_result_32};
     wire [63:0] srliw_result = {{32{srliw_result_32[31]}}, srliw_result_32};
     wire [63:0] sraiw_result = {{32{sraiw_result_32[31]}}, sraiw_result_32};
+    wire [63:0] subw_result  = {{32{subw_result_32[31]}}, subw_result_32};
 
 
     // Instance of the LSB slice of ALU    
@@ -66,6 +68,7 @@ module alu (
 
     // Final ALU MUX
     assign alu_result = (is_32bit && alu_op == 4'b0000) ? addiw_result :
+                    (is_32bit && alu_op == 4'b0001) ? subw_result : 
                     (is_32bit && alu_op == 4'b1101) ? slliw_result :
                     (is_32bit && alu_op == 4'b1110) ? srliw_result :
                     (is_32bit && alu_op == 4'b1111) ? sraiw_result :
