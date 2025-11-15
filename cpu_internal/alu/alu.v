@@ -63,8 +63,9 @@ module alu (
      
     // Shift operations
     assign shift_result = (alu_op == 4'b1101) ? (input_alu_A << input_alu_B[5:0]) : // SLL
-                          (alu_op == 4'b1110) ? (input_alu_A >> input_alu_B[5:0]) : // SRL
-                          (alu_op == 4'b1111) ? ($signed(input_alu_A) >>> input_alu_B[5:0]) : 0; // SRA
+                     (alu_op == 4'b1110) ? (input_alu_A >> input_alu_B[5:0]) : // SRL
+                     (alu_op == 4'b1111) ? ((input_alu_A >> input_alu_B[5:0]) | 
+                                           (input_alu_A[63] ? (~(64'b0) << (64 - input_alu_B[5:0])) : 0)) : 0;
 
     // Final ALU MUX
     assign alu_result = (is_32bit && alu_op == 4'b0000) ? addiw_result :
