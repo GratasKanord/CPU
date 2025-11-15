@@ -14,6 +14,7 @@ module cpu_top (input clk,
     wire pc_branch_taken;
     wire [63:0] pc_branch_target;
     wire is_JALR;
+    wire is_JAL;
     wire is_LOAD;
     wire is_CSR;
     wire is_32bit;
@@ -41,7 +42,7 @@ module cpu_top (input clk,
     wire [63:0] pc_ret;
     wire mret;
     
-    assign w_result = (is_JALR) ? pc_addr + 4 :
+    assign w_result = (is_JALR | is_JAL) ? pc_addr + 4 :
                       (is_LOAD ? dmem_data :
                       (is_CSR ? csr_data : alu_result));
 
@@ -136,6 +137,7 @@ module cpu_top (input clk,
     .pc_branch_taken(pc_branch_taken),
     .pc_branch_target(pc_branch_target),
     .is_JALR(is_JALR),
+    .is_JAL(is_JAL),
     .is_LOAD(is_LOAD),
     .is_CSR(is_CSR),
     .is_32bit(is_32bit),

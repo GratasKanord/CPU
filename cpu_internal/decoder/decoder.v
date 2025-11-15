@@ -15,6 +15,7 @@ module decoder (input [31:0] instr,
                 output reg [7:0] dmem_word_sel, // byte enable signal for store/load instructions
                 output [63:0] input_alu_B,
                 output reg is_JALR,
+                output reg is_JAL,
                 output reg is_LOAD,
                 output reg is_CSR,
                 output reg is_32bit,
@@ -50,6 +51,7 @@ module decoder (input [31:0] instr,
         alu_B_src       = 0;
         pc_branch_taken = 0;
         is_JALR         = 0;
+        is_JAL          = 0;
         is_LOAD         = 0;
         is_CSR          = 0;
         is_32bit        = 0;
@@ -154,6 +156,7 @@ module decoder (input [31:0] instr,
                     we_regs         = 1;
                     alu_B_src       = 1;
                     pc_branch_taken = 1;
+                    is_JAL          = 1;
                 end
                 7'b1110011 : begin          // System/SCR
                     sys_instr = instr[31:20];
@@ -179,6 +182,7 @@ module decoder (input [31:0] instr,
                     alu_op = 4'b1010; // NOP
                     pc_branch_taken = 0;
                     is_JALR = 0;
+                    is_JAL  = 0;
                     is_LOAD = 0;
                     is_CSR = 0;
                     is_32bit = 0;
@@ -198,6 +202,7 @@ module decoder (input [31:0] instr,
                     we_dmem      = 0;
                     alu_B_src    = 0;
                     is_JALR      = 0;
+                    is_JAL       = 0;
                     is_LOAD      = 0;
                     is_CSR       = 0;
                     is_32bit     = 0;
