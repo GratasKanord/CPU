@@ -43,10 +43,21 @@ module dmem (
             dmem[i] = 8'b0;
         
         // Pre-load test data at the signature areas
-        dmem[32'h2000] = 8'hFF;  // Test 2: lb from offset 0 -> -1
-        dmem[32'h2001] = 8'h00;  // Test 3: lb from offset 1 -> 0
-        dmem[32'h2002] = 8'hF0;  // Test 4: lb from offset 2 -> -16  
-        dmem[32'h2003] = 8'h0F;  // Test 5: lb from offset 3 -> 15
+        // 0x80002000: 0x00FF (little-endian: FF then 00)
+        dmem[32'h2000] = 8'hFF;
+        dmem[32'h2001] = 8'h00;
+        
+        // 0x80002002: 0xFF00 (-256) - THIS IS THE KEY!
+        dmem[32'h2002] = 8'h00;  // Low byte
+        dmem[32'h2003] = 8'hFF;  // High byte (0xFF = -1 when sign-extended)
+        
+        // 0x80002004: 0x0FF0 (4080)  
+        dmem[32'h2004] = 8'hF0;
+        dmem[32'h2005] = 8'h0F;
+        
+        // 0x80002006: 0xF00F (-4081)
+        dmem[32'h2006] = 8'h0F;
+        dmem[32'h2007] = 8'hF0;
     end
 
     // --------------------------------------------------------------
