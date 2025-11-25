@@ -43,20 +43,29 @@ module dmem (
         for (i = 0; i < DMEM_SIZE; i = i + 1)
             dmem[i] = 8'b0;
         
-        dmem[32'h2000] = 8'hFF;  // Low byte of 0x00FF
-        dmem[32'h2001] = 8'h00;  // High byte of 0x00FF
+         // 0x80002000: 0x00ff00ff (little-endian: ff, 00, ff, 00)
+        dmem[32'h2000] = 8'hFF;
+        dmem[32'h2001] = 8'h00;
+        dmem[32'h2002] = 8'hFF;
+        dmem[32'h2003] = 8'h00;
         
-        // 0x80002002: 0xFF00 (little-endian: 00 then FF)  
-        dmem[32'h2002] = 8'h00;  // Low byte of 0xFF00
-        dmem[32'h2003] = 8'hFF;  // High byte of 0xFF00
+        // 0x80002004: 0xff00ff00 (little-endian: 00, ff, 00, ff)
+        dmem[32'h2004] = 8'h00;
+        dmem[32'h2005] = 8'hFF;
+        dmem[32'h2006] = 8'h00;
+        dmem[32'h2007] = 8'hFF;
         
-        // 0x80002004: 0x0FF0 (little-endian: F0 then 0F)
-        dmem[32'h2004] = 8'hF0;  // Low byte of 0x0FF0
-        dmem[32'h2005] = 8'h0F;  // High byte of 0x0FF0
+        // 0x80002008: 0x0ff00ff0 (little-endian: f0, 0f, f0, 0f)
+        dmem[32'h2008] = 8'hF0;
+        dmem[32'h2009] = 8'h0F;
+        dmem[32'h200A] = 8'hF0;
+        dmem[32'h200B] = 8'h0F;
         
-        // 0x80002006: 0xF00F (little-endian: 0F then F0)
-        dmem[32'h2006] = 8'h0F;  // Low byte of 0xF00F
-        dmem[32'h2007] = 8'hF0;  // High byte of 0xF00F
+        // 0x8000200c: 0xf00ff00f (little-endian: 0f, f0, 0f, f0)
+        dmem[32'h200C] = 8'h0F;
+        dmem[32'h200D] = 8'hF0;
+        dmem[32'h200E] = 8'h0F;
+        dmem[32'h200F] = 8'hF0;
     end
 
     // --------------------------------------------------------------
