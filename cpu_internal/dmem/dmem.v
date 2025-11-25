@@ -44,6 +44,7 @@ module dmem (
             dmem[i] = 8'b0;
         
          // 0x80002000: 0x00ff00ff (little-endian: ff, 00, ff, 00)
+         // 0x80002000: 0x00ff00ff (little-endian: ff, 00, ff, 00)
         dmem[32'h2000] = 8'hFF;
         dmem[32'h2001] = 8'h00;
         dmem[32'h2002] = 8'hFF;
