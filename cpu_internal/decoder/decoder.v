@@ -7,6 +7,7 @@ module decoder (input [31:0] instr,
                 input        trap_taken,
                 input        trap_done,
                 output reg [3:0] alu_op,
+                output reg [2:0] func3,
                 output reg [4:0] r_regs_addr1,  // 1st register's address
                 output reg [4:0] r_regs_addr2,  // 2nd register's address
                 output reg [4:0] w_regs_addr,   // destination register (address)
@@ -30,7 +31,6 @@ module decoder (input [31:0] instr,
                 output reg [3:0] exc_code,
                 output reg [63:0] exc_val,
                 output reg mret);
-    reg [2:0] func3;
     reg [6:0] func7;
     reg alu_B_src;
     reg [11:0] sys_instr;
@@ -332,6 +332,9 @@ module decoder (input [31:0] instr,
                 3'b001: dmem_word_sel = 8'b0000_0011; // LH
                 3'b010: dmem_word_sel = 8'b0000_1111; // LW
                 3'b011: dmem_word_sel = 8'b1111_1111; // LD
+                3'b100: dmem_word_sel = 8'b0000_0001; // LBU - same as LB but different extension
+                3'b101: dmem_word_sel = 8'b0000_0011; // LHU - same as LH but different extension
+                3'b110: dmem_word_sel = 8'b0000_1111; // LWU - same as LW but different extension
                 default: dmem_word_sel = 8'b0000_0000;
             endcase
         end

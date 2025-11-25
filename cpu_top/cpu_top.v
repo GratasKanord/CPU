@@ -3,6 +3,7 @@ module cpu_top (input clk,
     wire [63:0] pc_addr;
     wire [31:0] instruction;
     wire [3:0] alu_op;
+    wire [2:0] func3;
     wire [4:0] r_regs_addr1, r_regs_addr2, w_regs_addr;
     wire [63:0] regs_data1, regs_data2, alu_result;
     wire we_regs;
@@ -126,6 +127,7 @@ module cpu_top (input clk,
     .trap_taken(trap_taken),
     .trap_done(trap_done),
     .alu_op(alu_op),
+    .func3(func3),
     .r_regs_addr1(r_regs_addr1),
     .r_regs_addr2(r_regs_addr2),
     .w_regs_addr(w_regs_addr),
@@ -161,6 +163,7 @@ module cpu_top (input clk,
     .r_dmem_addr(alu_result),
     .w_dmem_data(regs_data2),
     .dmem_data(dmem_data),
+    .func3(func3),
     .exc_en(exc_dmem_en),
     .exc_code(exc_dmem_code),
     .exc_val(exc_dmem_val)

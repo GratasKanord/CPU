@@ -6,6 +6,7 @@ module dmem (
     input  wire [7:0]  dmem_word_sel,    // Selects operation size
     input  wire [63:0] r_dmem_addr,      // Effective address
     input  wire [63:0] w_dmem_data,      // Data to write
+    input  wire [2:0]  func3,            // Decoded command
     output reg  [63:0] dmem_data,        // Data to read
     output reg         exc_en,           // Exception enable
     output reg  [3:0]  exc_code,         // Exception code
@@ -42,22 +43,20 @@ module dmem (
         for (i = 0; i < DMEM_SIZE; i = i + 1)
             dmem[i] = 8'b0;
         
-        // Pre-load test data at the signature areas
-        // 0x80002000: 0x00FF (little-endian: FF then 00)
-        dmem[32'h2000] = 8'hFF;
-        dmem[32'h2001] = 8'h00;
+        dmem[32'h2000] = 8'hFF;  // Low byte of 0x00FF
+        dmem[32'h2001] = 8'h00;  // High byte of 0x00FF
         
-        // 0x80002002: 0xFF00 (-256) - THIS IS THE KEY!
-        dmem[32'h2002] = 8'h00;  // Low byte
-        dmem[32'h2003] = 8'hFF;  // High byte (0xFF = -1 when sign-extended)
+        // 0x80002002: 0xFF00 (little-endian: 00 then FF)  
+        dmem[32'h2002] = 8'h00;  // Low byte of 0xFF00
+        dmem[32'h2003] = 8'hFF;  // High byte of 0xFF00
         
-        // 0x80002004: 0x0FF0 (4080)  
-        dmem[32'h2004] = 8'hF0;
-        dmem[32'h2005] = 8'h0F;
+        // 0x80002004: 0x0FF0 (little-endian: F0 then 0F)
+        dmem[32'h2004] = 8'hF0;  // Low byte of 0x0FF0
+        dmem[32'h2005] = 8'h0F;  // High byte of 0x0FF0
         
-        // 0x80002006: 0xF00F (-4081)
-        dmem[32'h2006] = 8'h0F;
-        dmem[32'h2007] = 8'hF0;
+        // 0x80002006: 0xF00F (little-endian: 0F then F0)
+        dmem[32'h2006] = 8'h0F;  // Low byte of 0xF00F
+        dmem[32'h2007] = 8'hF0;  // High byte of 0xF00F
     end
 
     // --------------------------------------------------------------
@@ -123,18 +122,30 @@ module dmem (
             for (b = 0; b < num_bytes; b = b + 1)
                 dmem_data[b*8 +: 8] = dmem[local_addr + b];
             
-            // Sign extension for byte load
-            if (dmem_word_sel == 8'b0000_0001) begin // LB
-                dmem_data = {{56{dmem_data[7]}}, dmem_data[7:0]};
-            end
-            // Sign extension for halfword load  
-            else if (dmem_word_sel == 8'b0000_0011) begin // LH
-                dmem_data = {{48{dmem_data[15]}}, dmem_data[15:0]};
-            end
-            // Sign extension for word load
-            else if (dmem_word_sel == 8'b0000_1111) begin // LW
-                dmem_data = {{32{dmem_data[31]}}, dmem_data[31:0]};
-            end
+            // Extension based on instruction type
+            case (dmem_word_sel)
+                8'b0000_0001: begin // Byte loads
+                    case (func3)
+                        3'b000: dmem_data = {{56{dmem_data[7]}}, dmem_data[7:0]}; // LB - sign extend
+                        3'b100: dmem_data = {56'b0, dmem_data[7:0]};              // LBU - zero extend
+                        default: dmem_data = {{56{dmem_data[7]}}, dmem_data[7:0]}; // default to signed
+                    endcase
+                end
+                8'b0000_0011: begin // Halfword loads  
+                    case (func3)
+                        3'b001: dmem_data = {{48{dmem_data[15]}}, dmem_data[15:0]}; // LH - sign extend
+                        3'b101: dmem_data = {48'b0, dmem_data[15:0]};               // LHU - zero extend
+                        default: dmem_data = {{48{dmem_data[15]}}, dmem_data[15:0]}; // default to signed
+                    endcase
+                end
+                8'b0000_1111: begin // Word loads
+                    case (func3)
+                        3'b010: dmem_data = {{32{dmem_data[31]}}, dmem_data[31:0]}; // LW - sign extend
+                        3'b110: dmem_data = {32'b0, dmem_data[31:0]};               // LWU - zero extend
+                        default: dmem_data = {{32{dmem_data[31]}}, dmem_data[31:0]}; // default to signed
+                    endcase
+                end
+            endcase
         end
     end
 
