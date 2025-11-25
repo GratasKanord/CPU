@@ -14,7 +14,7 @@ reg [31:0] imem [0:MEM_SIZE - 1];
 integer i;
 initial begin
     //$readmemh("./ASMcode/tests/instructions/auipc/test.hex", imem);
-    $readmemh("./compl_tests/rv64ui-p-lwu.hex", imem); 
+    $readmemh("./compl_tests/rv64ui-p-ld.hex", imem); 
 end
 
 always @(*) begin

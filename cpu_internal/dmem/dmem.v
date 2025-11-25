@@ -43,30 +43,44 @@ module dmem (
         for (i = 0; i < DMEM_SIZE; i = i + 1)
             dmem[i] = 8'b0;
         
-         // 0x80002000: 0x00ff00ff (little-endian: ff, 00, ff, 00)
-         // 0x80002000: 0x00ff00ff (little-endian: ff, 00, ff, 00)
         dmem[32'h2000] = 8'hFF;
         dmem[32'h2001] = 8'h00;
         dmem[32'h2002] = 8'hFF;
         dmem[32'h2003] = 8'h00;
+        dmem[32'h2004] = 8'hFF;
+        dmem[32'h2005] = 8'h00;
+        dmem[32'h2006] = 8'hFF;
+        dmem[32'h2007] = 8'h00;
         
-        // 0x80002004: 0xff00ff00 (little-endian: 00, ff, 00, ff)
-        dmem[32'h2004] = 8'h00;
-        dmem[32'h2005] = 8'hFF;
-        dmem[32'h2006] = 8'h00;
-        dmem[32'h2007] = 8'hFF;
+        // 0x80002008: 0xff00ff00ff00ff00 (little-endian: 00, ff, 00, ff, 00, ff, 00, ff)
+        dmem[32'h2008] = 8'h00;
+        dmem[32'h2009] = 8'hFF;
+        dmem[32'h200A] = 8'h00;
+        dmem[32'h200B] = 8'hFF;
+        dmem[32'h200C] = 8'h00;
+        dmem[32'h200D] = 8'hFF;
+        dmem[32'h200E] = 8'h00;
+        dmem[32'h200F] = 8'hFF;
         
-        // 0x80002008: 0x0ff00ff0 (little-endian: f0, 0f, f0, 0f)
-        dmem[32'h2008] = 8'hF0;
-        dmem[32'h2009] = 8'h0F;
-        dmem[32'h200A] = 8'hF0;
-        dmem[32'h200B] = 8'h0F;
+        // 0x80002010: 0x0ff00ff00ff00ff0 (little-endian: f0, 0f, f0, 0f, f0, 0f, f0, 0f)
+        dmem[32'h2010] = 8'hF0;
+        dmem[32'h2011] = 8'h0F;
+        dmem[32'h2012] = 8'hF0;
+        dmem[32'h2013] = 8'h0F;
+        dmem[32'h2014] = 8'hF0;
+        dmem[32'h2015] = 8'h0F;
+        dmem[32'h2016] = 8'hF0;
+        dmem[32'h2017] = 8'h0F;
         
-        // 0x8000200c: 0xf00ff00f (little-endian: 0f, f0, 0f, f0)
-        dmem[32'h200C] = 8'h0F;
-        dmem[32'h200D] = 8'hF0;
-        dmem[32'h200E] = 8'h0F;
-        dmem[32'h200F] = 8'hF0;
+        // 0x80002018: 0xf00ff00ff00ff00f (little-endian: 0f, f0, 0f, f0, 0f, f0, 0f, f0)
+        dmem[32'h2018] = 8'h0F;
+        dmem[32'h2019] = 8'hF0;
+        dmem[32'h201A] = 8'h0F;
+        dmem[32'h201B] = 8'hF0;
+        dmem[32'h201C] = 8'h0F;
+        dmem[32'h201D] = 8'hF0;
+        dmem[32'h201E] = 8'h0F;
+        dmem[32'h201F] = 8'hF0;
     end
 
     // --------------------------------------------------------------
