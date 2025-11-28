@@ -20,9 +20,7 @@ module dmem (
     // Calculate offset address (subtract base to get local address)
     wire [63:0] local_addr = r_dmem_addr - DMEM_BASE;
 
-    // --------------------------------------------------------------
     // Function to determine number of bytes per operation
-    // --------------------------------------------------------------
     function integer get_num_bytes(input [7:0] sel);
         begin
             case (sel)
@@ -35,57 +33,16 @@ module dmem (
         end
     endfunction
 
-    // --------------------------------------------------------------
     // Memory initialization (for simulation)
-    // --------------------------------------------------------------
     integer i, b;
     initial begin
         for (i = 0; i < DMEM_SIZE; i = i + 1)
             dmem[i] = 8'b0;
         
-        dmem[32'h2000] = 8'hFF;
-        dmem[32'h2001] = 8'h00;
-        dmem[32'h2002] = 8'hFF;
-        dmem[32'h2003] = 8'h00;
-        dmem[32'h2004] = 8'hFF;
-        dmem[32'h2005] = 8'h00;
-        dmem[32'h2006] = 8'hFF;
-        dmem[32'h2007] = 8'h00;
-        
-        // 0x80002008: 0xff00ff00ff00ff00 (little-endian: 00, ff, 00, ff, 00, ff, 00, ff)
-        dmem[32'h2008] = 8'h00;
-        dmem[32'h2009] = 8'hFF;
-        dmem[32'h200A] = 8'h00;
-        dmem[32'h200B] = 8'hFF;
-        dmem[32'h200C] = 8'h00;
-        dmem[32'h200D] = 8'hFF;
-        dmem[32'h200E] = 8'h00;
-        dmem[32'h200F] = 8'hFF;
-        
-        // 0x80002010: 0x0ff00ff00ff00ff0 (little-endian: f0, 0f, f0, 0f, f0, 0f, f0, 0f)
-        dmem[32'h2010] = 8'hF0;
-        dmem[32'h2011] = 8'h0F;
-        dmem[32'h2012] = 8'hF0;
-        dmem[32'h2013] = 8'h0F;
-        dmem[32'h2014] = 8'hF0;
-        dmem[32'h2015] = 8'h0F;
-        dmem[32'h2016] = 8'hF0;
-        dmem[32'h2017] = 8'h0F;
-        
-        // 0x80002018: 0xf00ff00ff00ff00f (little-endian: 0f, f0, 0f, f0, 0f, f0, 0f, f0)
-        dmem[32'h2018] = 8'h0F;
-        dmem[32'h2019] = 8'hF0;
-        dmem[32'h201A] = 8'h0F;
-        dmem[32'h201B] = 8'hF0;
-        dmem[32'h201C] = 8'h0F;
-        dmem[32'h201D] = 8'hF0;
-        dmem[32'h201E] = 8'h0F;
-        dmem[32'h201F] = 8'hF0;
+        dmem[16'h2003] = 8'hef;  // tdat4 - CHANGED FROM 0xff TO 0xef!
     end
 
-    // --------------------------------------------------------------
     // Combinational: exception detection + load data output
-    // --------------------------------------------------------------
     reg [3:0] num_bytes;
 
     always @(*) begin
@@ -173,9 +130,7 @@ module dmem (
         end
     end
 
-    // --------------------------------------------------------------
     // Sequential: perform store only if no exception
-    // --------------------------------------------------------------
     always @(posedge clk) begin
         if (we_dmem && !exc_en && r_dmem_addr != 64'h80001000) begin
             for (b = 0; b < num_bytes; b = b + 1)
