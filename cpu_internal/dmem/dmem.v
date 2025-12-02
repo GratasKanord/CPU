@@ -36,10 +36,27 @@ module dmem (
     // Memory initialization (for simulation)
     integer i, b;
     initial begin
+        // Initialize all memory to zero first
         for (i = 0; i < DMEM_SIZE; i = i + 1)
             dmem[i] = 8'b0;
         
-        dmem[16'h2003] = 8'hef;  // tdat4 - CHANGED FROM 0xff TO 0xef!
+        // First, set the debug pattern
+        for (i = 32'h2000; i < 32'h2020; i = i + 4) begin
+            // Put address-dependent pattern
+            dmem[i]   = i[7:0];      // LSB of address
+            dmem[i+1] = i[15:8];     // Next byte
+            dmem[i+2] = 8'hde;       // Debug pattern
+            dmem[i+3] = 8'had;       // Debug pattern
+        end
+            
+        dmem[32'h2006] = 8'hef;  
+        dmem[32'h2007] = 8'hbe;  
+            
+        dmem[32'h2012] = 8'hef;
+        dmem[32'h2013] = 8'hbe;
+        dmem[32'h2014] = 8'h00;
+        dmem[32'h2015] = 8'h00;
+
     end
 
     // Combinational: exception detection + load data output
