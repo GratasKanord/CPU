@@ -43,7 +43,7 @@ module cpu_top_tb;
   // end
   initial begin
     //#150; for simulating ASM programs
-    #8500; // for compliance tests
+    #50500; // for compliance tests
     
     // $display("\nREGS");
     // uut.u_regfile.dump_regs();
