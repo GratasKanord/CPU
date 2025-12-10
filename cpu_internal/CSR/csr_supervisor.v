@@ -4,11 +4,11 @@ module csr_supervisor (input wire clk,
                        input wire [11:0] r_csr_addr, // 12-bit CSR address
                        input wire [63:0] w_csr_data, // data to write
                        input wire [63:0] pc_addr,    // current PC (for trap)
-                       input wire [1:0] priv_lvl,    // current CPU privilege: 0 = U, 1 = S, 3 = M
+                       input wire [1:0] priv_lvl,    // current CPU privilege
                        output reg [63:0] csr_data,
-                       output reg exc_en,            // exceptions handling
+                       output reg exc_en,            
                        output reg [3:0] exc_code,
-                       output reg [63:0] exc_val);   // PC saved for trap
+                       output reg [63:0] exc_val);   
     
     // Supervisor CSRs
     reg [63:0] sstatus;

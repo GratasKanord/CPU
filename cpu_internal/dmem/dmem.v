@@ -13,11 +13,12 @@ module dmem (
     output reg  [63:0] exc_val           // Exception value (faulting address)
 );
 
-    localparam DMEM_SIZE = 16384;        // Increased to 16KB
+    // I had to implement memory mapping for passing the compliance tests
+    localparam DMEM_SIZE = 16384;        // 16KB memory
     localparam DMEM_BASE = 64'h80000000; // Base address for memory mapping
     reg [7:0] dmem [0:DMEM_SIZE-1];      // Byte-addressable memory
     
-    // Calculate offset address (subtract base to get local address)
+    // Calculating offset address (subtracting base to get local address)
     wire [63:0] local_addr = r_dmem_addr - DMEM_BASE;
 
     // Function to determine number of bytes per operation
@@ -33,7 +34,7 @@ module dmem (
         end
     endfunction
 
-    // Memory initialization (for simulation)
+    // Memory initialization (for simulation & compliance tests)
     integer i, b;
     initial begin
         // Initialize all memory to zero first
@@ -43,7 +44,7 @@ module dmem (
 
     end
 
-    // Combinational: exception detection + load data output
+    // Exception detection + load data output
     reg [3:0] num_bytes;
 
     always @(*) begin
@@ -55,7 +56,7 @@ module dmem (
 
         num_bytes = get_num_bytes(dmem_word_sel);
 
-        // Check if address is in our mapped range using local_addr
+        // Check if address is in the mapped range using local_addr
         if (r_dmem_addr < DMEM_BASE || local_addr >= DMEM_SIZE) begin
             if (we_dmem) begin
                 exc_en   = 1;
@@ -95,7 +96,7 @@ module dmem (
         end
         // Handle tohost writes (compliance test exit condition)
         else if (we_dmem && r_dmem_addr == 64'h80001000) begin
-            $display("TEST COMPLETE, to_host was written!");
+            $display("TEST COMPLETE, to_host was written! Yohoo!");
             $finish;
         end
         // Normal load operation

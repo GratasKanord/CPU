@@ -4,17 +4,16 @@ module imem (input rst,
              output reg        exc_en,
              output reg [3:0]  exc_code,
              output reg [63:0] exc_val);
-// Number of instructions, 4 bytes each (256Kb)
+
 localparam MEM_SIZE = 4096; 
 
 // Memory array
 reg [31:0] imem [0:MEM_SIZE - 1];
 
-// Hardcoded instructions
+// Hardcoded instructions or compliance tests
 integer i;
 initial begin
-    //$readmemh("./ASMcode/tests/instructions/auipc/test.hex", imem);
-    $readmemh("./compl_tests/rv64ui-p-simple.hex", imem); 
+    $readmemh("./compl_tests/rv64ui-p-add.hex", imem); 
 end
 
 always @(*) begin

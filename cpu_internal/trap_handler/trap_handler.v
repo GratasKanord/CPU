@@ -10,10 +10,10 @@ module trap_handler (
     input  wire [3:0]  irq_code,
     input  wire [63:0] irq_val,
 
-    // Return instruction
+    // Return from trap instruction
     input  wire        mret,
 
-    // Current pipeline state
+    // Current state
     input  wire [63:0] pc_addr,     // faulting PC
     input  wire [63:0] mtvec,       // trap vector base
     input  wire [1:0]  priv_lvl,    // current privilege
@@ -66,7 +66,7 @@ module trap_handler (
             if (trap_taken) begin
                 trap_taken <= 1'b0;
             end else trap_taken <= 1'b1;
-            // --- Trap entry ---
+            // Trap entry
             mepc_next      <= pc_addr;
             mcause_next    <= {irq_en, 59'b0, cause_code};
             mtval_next     <= cause_val;

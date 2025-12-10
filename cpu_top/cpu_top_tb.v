@@ -21,26 +21,6 @@ module cpu_top_tb;
     rst = 0;
   end
 
-  // always @(posedge clk) begin
-  //   if (uut.u_regfile.we_regs) begin   // PC of sw x3, -60(x30)
-  //       $display("x%0d <= %h @ PC=%h instr= %h", uut.u_regfile.w_regs_addr,
-  //                                                uut.u_regfile.w_regs_data,
-  //                                                uut.u_pc.pc_addr,
-  //                                                uut.u_imem.instruction);                 
-  //   end
-  // end
-
-
-  // always @(posedge clk) begin
-  //   if (uut.u_pc.pc_addr == 64) begin   // PC of sw x3, -60(x30)
-  //       $display(">>> Test result: x3 = %0d (decimal), 0x%h (hex)",
-  //                uut.u_regfile.regs[3], uut.u_regfile.regs[3]);
-                 
-  //   end
-  //   if (uut.u_pc.pc_addr == 72) begin  
-  //     $finish;    
-  //   end
-  // end
   initial begin
     //#150; for simulating ASM programs
     #50500; // for compliance tests

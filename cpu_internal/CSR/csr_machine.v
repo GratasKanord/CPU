@@ -5,7 +5,7 @@ module csr_machine (input wire clk,
                     input wire [63:0] w_csr_data, // data to write
                     input wire [63:0] pc_addr,    // current PC (for trap)
                     input wire instr_retired,     // instruction retired signal
-                    input wire [1:0] priv_lvl,   // current CPU privilege: 0 = U, 1 = S, 3 = M
+                    input wire [1:0] priv_lvl,    // current CPU privilege
                     input wire       trap_taken,
                     input wire       trap_done,
                     input wire [63:0] mepc_next,
@@ -14,7 +14,7 @@ module csr_machine (input wire clk,
                     input wire [63:0] mstatus_next,
                     input wire        mret,
                     output reg [63:0] csr_data,
-                    output reg exc_en,            // exceptions handling
+                    output reg exc_en,            
                     output reg [3:0] exc_code,
                     output reg [63:0] exc_val,
                     output reg [63:0] mstatus_current,
@@ -149,7 +149,7 @@ module csr_machine (input wire clk,
             mcycle                      <= mcycle + 1;
             time_reg                    <= time_reg + 1;
             if (instr_retired) minstret <= minstret + 1;
-            mstatus_current <= mstatus;
+            mstatus_current             <= mstatus;
             exc_en       <= 1'b0;
             exc_val      <= 64'b0;
             exc_code     <= 4'b0;

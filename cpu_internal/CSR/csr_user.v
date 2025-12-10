@@ -4,7 +4,7 @@ module csr_user (input wire clk,
                  input wire [11:0] r_csr_addr, // 12-bit CSR address
                  input wire [63:0] w_csr_data, // data to write
                  output reg [63:0] csr_data,
-                 output reg exc_en,            // exceptions handling
+                 output reg exc_en,            
                  output reg [3:0] exc_code,
                  output reg [63:0] exc_val);
     

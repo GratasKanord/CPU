@@ -227,7 +227,7 @@ module decoder (input [31:0] instr,
                 10'b0100000101: alu_op = 4'b1111; // SRA
                 10'b0000000110: alu_op = 4'b0011; // OR
                 10'b0000000111: alu_op = 4'b0010; // AND
-                default: alu_op        = 4'b1010;        // NOP
+                default: alu_op        = 4'b1010; // NOP
             endcase
         end
     end

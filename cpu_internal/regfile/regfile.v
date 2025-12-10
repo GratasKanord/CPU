@@ -17,6 +17,7 @@ module regfile (input clk,
         for (i = 0; i < 32; i = i + 1) regs[i] = 0;
     end
     
+    // Helper for debugging
     task dump_regs;
         integer i;
         for (i = 0; i < 32; i = i + 1) begin

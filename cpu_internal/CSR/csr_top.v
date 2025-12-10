@@ -6,7 +6,7 @@ module csr_top (
     input  wire [63:0] w_csr_data,        // write data
     input  wire [63:0] pc_addr,           // current PC
     input  wire        instr_retired,     // instruction retired (for mcycle/minstret)
-    input  wire [1:0]  priv_lvl,          // current privilege level (0 = U, 1 = S, 3 = M)
+    input  wire [1:0]  priv_lvl,          // current privilege level 
     input  wire        trap_taken,
     input  wire        trap_done,
     input  wire [63:0] mepc_next,
